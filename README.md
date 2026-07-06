@@ -37,9 +37,6 @@ FastAPI process as the API. First run seeds demo data automatically:
   reliability/insurance/Plug Watch behavior demonstrable instead of
   theoretical. See [docs/trust-engine-addendum.md](docs/trust-engine-addendum.md) §6.
 
-A `.claude/launch.json` config is included for the `preview_start` tool if
-you're driving this from Claude Code.
-
 ## What's here
 
 ```
