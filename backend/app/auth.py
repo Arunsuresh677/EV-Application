@@ -15,7 +15,7 @@ import os
 import time
 from pathlib import Path
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 
 from . import db
 
@@ -83,3 +83,13 @@ def get_current_user(authorization: str = Header(default="")) -> dict:
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+def require_role(*roles: str):
+    """RBAC, enforced server-side from the authenticated user's row — never
+    trust a client-asserted role. Use as Depends(require_role("station_admin"))."""
+    def check(user: dict = Depends(get_current_user)) -> dict:
+        if user["role"] not in roles:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+        return user
+    return check

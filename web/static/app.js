@@ -178,6 +178,14 @@ function statusDotClass(status) {
   return 'dead';
 }
 
+// Drivers never need to know *why* a connector is down (an auto-detected
+// fault vs. the operator's own planned toggle) — both read the same, calm
+// label. The operator dashboard shows the real distinction instead.
+function statusLabel(status) {
+  if (status === 'faulted' || status === 'maintenance') return 'Under maintenance';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function initMapView() {
   // Deliberately not using navigator.geolocation: it triggers a native
   // permission prompt, and the seeded demo stations only exist around
@@ -303,7 +311,7 @@ function renderStationSheet() {
         <div class="conn-kw">${c.power_kw} kW</div>
       </div>
       <div style="text-align:right;">
-        <div class="pill"><span class="dot ${statusDotClass(c.status)}"></span>${c.status}</div>
+        <div class="pill"><span class="dot ${statusDotClass(c.status)}"></span>${statusLabel(c.status)}</div>
         <div style="margin-top:6px;">${trustBadgeHtml(c)}</div>
       </div>
     </div>

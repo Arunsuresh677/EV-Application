@@ -24,17 +24,22 @@ object EVFont {
     val mono = FontFamily.Monospace
 }
 
+// FAULTED (system/Plug-Watch auto-detected) and MAINTENANCE (operator's own
+// manual toggle) are technically distinct server-side but shown to drivers
+// under one calm label — they don't need to know which it is, just that
+// it's not available. The operator dashboard keeps the distinction.
 enum class ConnectorStatus(val label: String) {
     AVAILABLE("Available"),
     OCCUPIED("Occupied"),
-    FAULTED("Faulted"),
-    RESERVED("Reserved");
+    FAULTED("Under maintenance"),
+    RESERVED("Reserved"),
+    MAINTENANCE("Under maintenance");
 
     val color: Color
         get() = when (this) {
             AVAILABLE -> EVColor.lime
             OCCUPIED -> EVColor.amber
-            FAULTED -> EVColor.red
+            FAULTED, MAINTENANCE -> EVColor.red
             RESERVED -> EVColor.textMuted
         }
 }

@@ -31,11 +31,19 @@ python -m uvicorn app.main:app --reload --port 8000
 Open `http://localhost:8000` — that's the driver web app, served by the same
 FastAPI process as the API. First run seeds demo data automatically:
 
-- **Login:** `driver@demo.dev` / `chargeme123`
+- **Driver login:** `driver@demo.dev` / `chargeme123`
 - Three demo stations, including one connector deliberately seeded with a low
   score so its sessions fail somewhat often — that's what makes the
   reliability/insurance/Plug Watch behavior demonstrable instead of
   theoretical. See [docs/trust-engine-addendum.md](docs/trust-engine-addendum.md) §6.
+
+Station operators log in separately at `http://localhost:8000/operator`:
+
+- **Voltway Networks admin:** `operator@demo.dev` / `operate123` (owns the
+  three driver-app demo stations above)
+- **Beacon EV Networks admin:** `beacon-admin@demo.dev` / `operate123` — a
+  second, unrelated operator seeded specifically to prove neither admin can
+  see the other's stations, pricing, or tickets.
 
 ## What's here
 
@@ -43,15 +51,24 @@ FastAPI process as the API. First run seeds demo data automatically:
 backend/          FastAPI + SQLite. Real OCPP hardware/Central System is
                    simulated (backend/app/services/ocpp_sim.py) since none
                    exists in this environment — see addendum §6.
-web/               The driver web app: one HTML/CSS/JS codebase, two real
-                   layouts (resize the window — <900px is the mobile layout,
-                   >=900px is the desktop layout). No build step.
+web/               index.html: the driver app — one HTML/CSS/JS codebase, two
+                   real layouts (resize the window — <900px is mobile,
+                   >=900px is desktop). operator.html: the station operator
+                   dashboard (stations/connectors, pricing, analytics,
+                   maintenance tickets). No build step for either.
 ios-starter/       SwiftUI screens + APIClient, extended with Trust Engine+
                    (TrustBadge, Plug Watch report sheet, wallet/claim models).
 android-starter/   The same screens/features in Kotlin/Jetpack Compose.
 docs/              PRD, Postgres schema (production reference), OpenAPI spec,
                    and the Trust Engine+ addendum.
 ```
+
+The operator dashboard (`backend/app/routers/operator.py`) is RBAC-gated
+server-side (`station_admin`/`super_admin` only, see `auth.require_role`) and
+every route is scoped to the caller's own `operator_id` — one charging
+network's admin can never see or touch another's data. This is the actual
+multi-tenant boundary a product sold to multiple, unrelated stations depends
+on.
 
 `ios-starter/` and `android-starter/` are real, extended source trees but
 **cannot be compiled or run in this environment** — there's no Xcode or
@@ -69,5 +86,6 @@ back, not compiled.
 2. Wire the iOS/Android Xcode/Gradle projects and real maps SDK (Google Maps
    Platform / Mapbox) — the starters intentionally don't include build
    tooling or maps wiring yet.
-3. Build the operator dashboard and fleet module (PRD §2, roles beyond
-   `driver`) — out of scope for this pass, which focused on the driver app.
+3. Build the fleet module (PRD §2, `fleet_manager`/`fleet_driver` roles) —
+   the operator dashboard is now built; fleet is the remaining role group
+   out of scope for this pass.

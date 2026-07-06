@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoltPath Operator Dashboard</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath <span style="color:var(--muted); font-size:13px; font-weight:600;">Operator</span></div>
+
+    <form id="login-form">
+      <div class="field"><label>Email</label><input type="email" id="login-email" value="operator@demo.dev" required></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" value="operate123" required></div>
+      <p class="auth-error" id="login-error"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log in</button>
+    </form>
+    <p style="color:var(--muted); font-size:12px; margin-top:14px; text-align:center;">
+      Station operators only. Drivers use the <a href="/" style="color:var(--lime);">driver app</a>.
+    </p>
+  </div>
+</div>
+
+<!-- ============ ADMIN APP ============ -->
+<div class="admin-app hidden" id="admin-app">
+  <div class="admin-sidebar">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath</div>
+    <div class="admin-nav-item on" data-view="stations"><span class="label-text">Stations</span></div>
+    <div class="admin-nav-item" data-view="pricing"><span class="label-text">Pricing</span></div>
+    <div class="admin-nav-item" data-view="analytics"><span class="label-text">Analytics</span></div>
+    <div class="admin-nav-item" data-view="tickets"><span class="label-text">Tickets <span class="count" id="ticket-count"></span></span></div>
+    <div style="flex:1;"></div>
+    <div class="admin-nav-item" id="logout-btn"><span class="label-text">Log out</span></div>
+  </div>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <div class="eyebrow" id="operator-name">Operator</div>
+        <h1 class="title" id="admin-page-title">Stations</h1>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: STATIONS & CONNECTORS ============ -->
+    <div class="admin-view active" id="admin-view-stations">
+      <div class="form-row">
+        <div class="field"><label>Station name</label><input id="new-station-name" placeholder="e.g. Main St Garage"></div>
+        <div class="field"><label>Address</label><input id="new-station-address" placeholder="123 Main St"></div>
+        <div class="field"><label>Lat</label><input id="new-station-lat" placeholder="37.78" style="width:90px;"></div>
+        <div class="field"><label>Lng</label><input id="new-station-lng" placeholder="-122.40" style="width:90px;"></div>
+        <button class="btn btn-primary" id="add-station-btn">Add station</button>
+      </div>
+
+      <div id="stations-list"></div>
+    </div>
+
+    <!-- ============ VIEW: PRICING ============ -->
+    <div class="admin-view" id="admin-view-pricing">
+      <p style="color:var(--muted); font-size:13px; margin-top:0;">One tariff applies across all of your stations. Setting a new rate takes effect immediately for new sessions.</p>
+      <div class="form-row">
+        <div class="field">
+          <label>Pricing model</label>
+          <select id="tariff-model">
+            <option value="per_kwh">Per kWh</option>
+            <option value="per_minute">Per minute</option>
+            <option value="flat">Flat rate</option>
+          </select>
+        </div>
+        <div class="field"><label>Rate ($)</label><input id="tariff-rate" type="number" step="0.01" placeholder="0.42"></div>
+        <button class="btn btn-primary" id="set-tariff-btn">Save pricing</button>
+      </div>
+      <p id="tariff-current" style="color:var(--muted); font-size:13px;"></p>
+    </div>
+
+    <!-- ============ VIEW: ANALYTICS ============ -->
+    <div class="admin-view" id="admin-view-analytics">
+      <div class="form-row">
+        <div class="field">
+          <label>Station</label>
+          <select id="analytics-station-select"></select>
+        </div>
+      </div>
+      <div class="stat-row" id="analytics-stats"></div>
+      <div class="card">
+        <div class="eyebrow">Revenue by connector</div>
+        <div id="analytics-bars"></div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: TICKETS ============ -->
+    <div class="admin-view" id="admin-view-tickets">
+      <div id="tickets-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/operator.js"></script>
+</body>
+</html>

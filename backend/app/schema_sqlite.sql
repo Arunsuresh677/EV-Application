@@ -80,7 +80,12 @@ CREATE TABLE IF NOT EXISTS connectors (
     ocpp_connector_id INTEGER NOT NULL,
     type            TEXT NOT NULL CHECK (type IN ('CCS2','CHAdeMO','TYPE2','NACS')),
     power_kw        REAL NOT NULL,
-    status          TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available','occupied','faulted','reserved')),
+    status          TEXT NOT NULL DEFAULT 'available'
+                    CHECK (status IN ('available','occupied','faulted','reserved','maintenance')),
+    -- 'faulted' = system/Plug-Watch auto-detected problem; 'maintenance' =
+    -- operator manually took it offline. Driver-facing UI shows both under
+    -- one label ("Under maintenance"); the operator dashboard keeps the
+    -- distinction since it's operationally meaningful to them.
     reliability_score REAL NOT NULL DEFAULT 100,
     guaranteed      INTEGER NOT NULL DEFAULT 0,
     updated_at      TEXT NOT NULL,

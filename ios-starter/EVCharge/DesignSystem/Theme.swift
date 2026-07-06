@@ -41,14 +41,18 @@ extension Color {
 }
 
 /// Connector / station status used across map pins, station detail, and fleet lists.
+/// `faulted` (system/Plug-Watch auto-detected) and `maintenance` (operator's
+/// own manual toggle) are technically distinct server-side but shown to
+/// drivers under one calm label — they don't need to know which it is, just
+/// that it's not available. The operator dashboard keeps the distinction.
 enum ConnectorStatus: String, Codable {
-    case available, occupied, faulted, reserved
+    case available, occupied, faulted, reserved, maintenance
 
     var color: Color {
         switch self {
         case .available: return EVTheme.lime
         case .occupied:  return EVTheme.amber
-        case .faulted:   return EVTheme.red
+        case .faulted, .maintenance: return EVTheme.red
         case .reserved:  return EVTheme.textMuted
         }
     }
@@ -57,7 +61,7 @@ enum ConnectorStatus: String, Codable {
         switch self {
         case .available: return "Available"
         case .occupied:  return "Occupied"
-        case .faulted:   return "Faulted"
+        case .faulted, .maintenance: return "Under maintenance"
         case .reserved:  return "Reserved"
         }
     }

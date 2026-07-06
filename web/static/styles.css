@@ -89,6 +89,12 @@ h1.title{ font-family:var(--disp); font-weight:600; font-size:24px; margin:0; le
 
 /* ============== MAP VIEW ============== */
 #view-map{ position:relative; }
+/* Base layout for map-shell (fills #view-map) applies at every width — only
+   the row-vs-column direction changes at the desktop breakpoint below. This
+   must NOT live only inside that media query, or map-shell collapses to
+   height:0 below 900px (its children don't establish height in a plain
+   block container), hiding the map canvas on every phone/tablet view. */
+.map-shell{ display:flex; flex-direction:column; flex:1; min-height:0; width:100%; }
 .map-canvas{
   flex:1; position:relative; background:
     radial-gradient(circle at 30% 20%, #16202b 0%, #0B0F14 60%),
@@ -228,7 +234,7 @@ h1.title{ font-family:var(--disp); font-weight:600; font-size:24px; margin:0; le
   .tabbar{ display:none; }
 
   #view-map{ flex-direction:row; }
-  .map-shell{ display:flex; flex:1; min-height:0; width:100%; }
+  .map-shell{ flex-direction:row; }
   .station-list-col{
     display:flex; flex-direction:column; width:340px; flex:0 0 auto; border-right:1px solid var(--line);
     background:var(--bg-panel); min-height:0;
@@ -255,4 +261,61 @@ h1.title{ font-family:var(--disp); font-weight:600; font-size:24px; margin:0; le
 @media (min-width:1300px){
   .sheet{ width:420px; }
   .station-list-col{ width:380px; }
+}
+
+/* =====================================================================
+   OPERATOR DASHBOARD — separate audience/UI shape from the driver app
+   (data tables and forms, not a map), same dark theme + tokens throughout.
+   ===================================================================== */
+.admin-app{ display:flex; height:100vh; }
+.admin-sidebar{
+  width:220px; flex:0 0 auto; background:var(--bg-panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; padding:18px 12px;
+}
+.admin-sidebar .brand{ padding:6px 10px 20px; }
+.admin-nav-item{
+  font-family:var(--body); font-weight:600; font-size:14px; color:var(--muted);
+  padding:10px 12px; border-radius:10px; cursor:pointer; margin-bottom:2px;
+}
+.admin-nav-item.on{ color:var(--text); background:var(--bg-raise); }
+.admin-nav-item .count{ float:right; font-family:var(--mono); font-size:11px; color:var(--amber); }
+.admin-main{ flex:1; min-width:0; overflow-y:auto; padding:28px 32px; }
+.admin-view{ display:none; }
+.admin-view.active{ display:block; }
+.admin-topbar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; }
+.admin-operator-name{ color:var(--muted); font-size:12px; font-family:var(--mono); }
+
+.data-table{ width:100%; border-collapse:collapse; background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+.data-table th{ text-align:left; font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--bg-raise); }
+.data-table td{ padding:12px 16px; border-bottom:1px solid var(--line); font-size:14px; }
+.data-table tr:last-child td{ border-bottom:none; }
+.data-table tr:hover td{ background:var(--bg-raise); }
+.data-table select, .data-table input{ background:var(--bg-raise); border:1px solid var(--line); border-radius:8px; padding:6px 8px; color:var(--text); font-size:13px; font-family:inherit; }
+
+.stat-row{ display:flex; gap:14px; margin-bottom:22px; flex-wrap:wrap; }
+.stat-row .card{ flex:1; min-width:140px; }
+.stat-row .v{ font-family:var(--mono); font-weight:700; font-size:26px; }
+.stat-row .l{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
+
+.bar-row{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.bar-row:last-child{ border-bottom:none; }
+.bar-row .label{ width:140px; flex:0 0 auto; font-family:var(--mono); font-size:12px; color:var(--muted); }
+.bar-track{ flex:1; height:10px; background:var(--bg-raise); border-radius:6px; overflow:hidden; }
+.bar-fill{ height:100%; background:var(--lime); border-radius:6px; transition:width .4s ease; }
+.bar-row .amt{ width:90px; flex:0 0 auto; text-align:right; font-family:var(--mono); font-size:13px; font-weight:700; }
+
+.ticket-status{ font-family:var(--mono); font-size:10px; padding:4px 8px; border-radius:100px; text-transform:uppercase; }
+.ticket-status.open{ background:rgba(255,107,94,0.14); color:var(--red); }
+.ticket-status.in_progress{ background:rgba(255,180,84,0.14); color:var(--amber); }
+.ticket-status.resolved, .ticket-status.closed{ background:rgba(180,244,97,0.14); color:var(--lime); }
+.ticket-auto-tag{ font-family:var(--mono); font-size:10px; color:var(--muted); margin-left:6px; }
+
+.form-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; }
+.form-row .field{ margin-bottom:0; min-width:140px; }
+.form-row .field input, .form-row .field select{ background:var(--bg-raise); border:1px solid var(--line); border-radius:10px; padding:10px 12px; color:var(--text); font-size:14px; }
+
+@media (max-width: 720px){
+  .admin-sidebar{ width:72px; }
+  .admin-nav-item span.label-text{ display:none; }
+  .admin-main{ padding:20px 16px; }
 }
