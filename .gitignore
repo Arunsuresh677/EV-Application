@@ -16,6 +16,10 @@ __pycache__/
 # Scratch extraction leftover from initial setup
 /_extracted/
 
+# Local preview-tooling config (renamed to .devserver/ for the committed
+# version) — recreated here transiently as .claude/ when tooling needs it
+/.claude/
+
 # OS cruft
 .DS_Store
 Thumbs.db
