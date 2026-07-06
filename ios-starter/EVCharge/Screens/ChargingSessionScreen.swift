@@ -44,8 +44,8 @@ struct ChargingSessionScreen: View {
                     Text("Stop charging")
                         .frame(maxWidth: .infinity).padding()
                         .background(EVTheme.bgRaise).foregroundColor(EVTheme.textMain)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(EVTheme.line))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(EVTheme.line))
                 }
             }
 
@@ -81,8 +81,8 @@ private struct FailBanner: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(EVTheme.red.opacity(0.12))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(EVTheme.red))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: EVTheme.Radius.panel).stroke(EVTheme.red))
+        .clipShape(RoundedRectangle(cornerRadius: EVTheme.Radius.panel))
     }
 }
 
@@ -128,7 +128,7 @@ private struct MiniStat: View {
             Text(label.uppercased()).font(.system(size: 9)).foregroundColor(EVTheme.textMuted)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 12)
-        .background(EVTheme.bgPanel).clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(EVTheme.line))
+        .background(EVTheme.bgPanel).clipShape(RoundedRectangle(cornerRadius: EVTheme.Radius.element))
+        .overlay(RoundedRectangle(cornerRadius: EVTheme.Radius.element).stroke(EVTheme.line))
     }
 }

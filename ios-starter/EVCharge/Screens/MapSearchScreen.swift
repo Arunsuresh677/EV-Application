@@ -100,13 +100,13 @@ private struct StationDetailSheet: View {
                     .font(.system(size: 15, weight: .semibold))
                     .frame(maxWidth: .infinity).padding()
                     .background(EVTheme.lime).foregroundColor(EVTheme.bgDeep)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .clipShape(Capsule())
             }
             .disabled(isStarting)
         }
         .padding(18)
         .background(EVTheme.bgPanel)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: EVTheme.Radius.container, style: .continuous))
     }
 }
 
@@ -131,7 +131,7 @@ private struct StatBox: View {
             Text(label.uppercased()).font(.system(size: 9)).foregroundColor(EVTheme.textMuted)
         }
         .frame(maxWidth: .infinity).padding(10)
-        .background(EVTheme.bgRaise).clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(EVTheme.bgRaise).clipShape(RoundedRectangle(cornerRadius: EVTheme.Radius.element))
     }
 }
 

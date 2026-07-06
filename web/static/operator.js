@@ -89,6 +89,38 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   }
 });
 
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const company_name = document.getElementById('register-company').value;
+  const admin_name = document.getElementById('register-name').value;
+  const email = document.getElementById('register-email').value;
+  const password = document.getElementById('register-password').value;
+  const errorEl = document.getElementById('register-error');
+  errorEl.textContent = '';
+  try {
+    const { token, user } = await api('/auth/register-operator', { method: 'POST', body: { company_name, admin_name, email, password } });
+    state.token = token;
+    state.user = user;
+    localStorage.setItem('voltpath_operator_token', token);
+    afterLogin();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+});
+
+document.getElementById('switch-to-register').querySelector('a').addEventListener('click', () => {
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('register-form').classList.remove('hidden');
+  document.getElementById('switch-to-register').classList.add('hidden');
+  document.getElementById('switch-to-login').classList.remove('hidden');
+});
+document.getElementById('switch-to-login').querySelector('a').addEventListener('click', () => {
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('switch-to-login').classList.add('hidden');
+  document.getElementById('switch-to-register').classList.remove('hidden');
+});
+
 document.getElementById('logout-btn').addEventListener('click', () => {
   state.token = null;
   state.user = null;

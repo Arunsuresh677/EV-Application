@@ -66,6 +66,10 @@
             <div class="chip" data-filter-connector="TYPE2">Type 2</div>
             <div class="chip" data-filter-available="1">Available now</div>
           </div>
+          <div class="range-slider" style="padding:0 16px 12px;">
+            <div class="range-label">Search radius <b><span data-radius-value>25</span> km</b></div>
+            <input type="range" min="1" max="100" value="25" data-radius-slider>
+          </div>
           <div class="station-list-scroll" id="station-list-scroll">
             <!-- populated by app.js -->
           </div>
@@ -75,6 +79,20 @@
           <div class="me" id="me-dot" style="top:50%; left:50%;"></div>
           <!-- pins populated by app.js -->
           <div class="search-float"><span>🔍</span><span>Search chargers, address, station…</span></div>
+
+          <!-- mobile-only filters (desktop uses the station-list-col ones above) -->
+          <div class="mobile-filters">
+            <div class="filters">
+              <div class="chip on" data-filter-connector="">All connectors</div>
+              <div class="chip" data-filter-connector="CCS2">CCS2</div>
+              <div class="chip" data-filter-connector="TYPE2">Type 2</div>
+              <div class="chip" data-filter-available="1">Available now</div>
+            </div>
+            <div class="range-slider" style="padding:0 16px;">
+              <div class="range-label">Search radius <b><span data-radius-value>25</span> km</b></div>
+              <input type="range" min="1" max="100" value="25" data-radius-slider>
+            </div>
+          </div>
         </div>
 
         <!-- station detail: bottom sheet on mobile, right rail on desktop -->
@@ -131,6 +149,30 @@
           <div class="eyebrow">Activity</div>
           <div id="wallet-entries"><div class="empty-state">No credits yet.</div></div>
         </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="eyebrow">Your vehicles</div>
+          <div id="vehicle-list"></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+            <input id="vehicle-make" placeholder="Make" style="flex:1; min-width:90px; background:var(--bg-raise); border:1px solid var(--line); border-radius:var(--radius-element); padding:10px; color:var(--text); font-size:13px;">
+            <input id="vehicle-model" placeholder="Model" style="flex:1; min-width:90px; background:var(--bg-raise); border:1px solid var(--line); border-radius:var(--radius-element); padding:10px; color:var(--text); font-size:13px;">
+            <select id="vehicle-connector" style="background:var(--bg-raise); border:1px solid var(--line); border-radius:var(--radius-element); padding:10px; color:var(--text); font-size:13px;">
+              <option>CCS2</option><option>CHAdeMO</option><option>TYPE2</option><option>NACS</option>
+            </select>
+            <input id="vehicle-battery" type="number" placeholder="Battery kWh" style="flex:1; min-width:110px; background:var(--bg-raise); border:1px solid var(--line); border-radius:var(--radius-element); padding:10px; color:var(--text); font-size:13px;">
+          </div>
+          <button class="btn btn-ghost" style="width:100%; margin-top:10px;" id="add-vehicle-btn">Add vehicle</button>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="eyebrow">Payment methods</div>
+          <div id="payment-method-list"></div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <input id="card-number" placeholder="Card number (mock — any digits)" style="flex:1; background:var(--bg-raise); border:1px solid var(--line); border-radius:var(--radius-element); padding:10px; color:var(--text); font-size:13px;">
+          </div>
+          <button class="btn btn-ghost" style="width:100%; margin-top:10px;" id="add-card-btn">Add card</button>
+        </div>
+
         <button class="btn btn-ghost" style="width:100%; margin-top:20px;" id="logout-btn">Log out</button>
       </div>
     </div>

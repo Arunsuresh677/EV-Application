@@ -20,6 +20,7 @@ import com.evplatform.driver.network.ApiClient
 import com.evplatform.driver.ui.components.PlugWatchReportSheet
 import com.evplatform.driver.ui.components.TrustBadge
 import com.evplatform.driver.ui.theme.EVColor
+import com.evplatform.driver.ui.theme.EVRadius
 import com.evplatform.driver.ui.theme.ConnectorStatus
 
 /**
@@ -66,7 +67,7 @@ private fun StationDetailSheet(station: Station, onStart: (Connector) -> Unit, o
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .clip(RoundedCornerShape(topStart = EVRadius.container, topEnd = EVRadius.container))
             .background(EVColor.bgPanel)
             .padding(18.dp)
     ) {
@@ -98,7 +99,7 @@ private fun StationDetailSheet(station: Station, onStart: (Connector) -> Unit, o
         Button(
             onClick = { station.connectors.firstOrNull { it.status == ConnectorStatus.AVAILABLE }?.let(onStart) },
             colors = ButtonDefaults.buttonColors(containerColor = EVColor.lime, contentColor = EVColor.bgDeep),
-            shape = RoundedCornerShape(14.dp),
+            shape = EVRadius.capsule,
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) { Text("Start charging", fontWeight = FontWeight.SemiBold) }
     }
@@ -108,7 +109,7 @@ private fun StationDetailSheet(station: Station, onStart: (Connector) -> Unit, o
 private fun ReliabilityPill(score: Double) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clip(CircleShape).background(EVColor.bgRaise).padding(horizontal = 10.dp, vertical = 5.dp)
+        modifier = Modifier.clip(EVRadius.capsule).background(EVColor.bgRaise).padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(EVColor.lime))
         Spacer(Modifier.width(6.dp))
@@ -120,7 +121,7 @@ private fun ReliabilityPill(score: Double) {
 private fun RowScope.StatBox(value: String, label: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(EVColor.bgRaise).padding(10.dp)
+        modifier = Modifier.weight(1f).clip(RoundedCornerShape(EVRadius.element)).background(EVColor.bgRaise).padding(10.dp)
     ) {
         Text(value, color = EVColor.textMain, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Text(label.uppercase(), color = EVColor.textMuted, fontSize = 9.sp)

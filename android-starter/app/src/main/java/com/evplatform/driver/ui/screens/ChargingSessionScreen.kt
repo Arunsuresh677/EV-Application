@@ -22,6 +22,7 @@ import com.evplatform.driver.model.InsuranceClaim
 import com.evplatform.driver.model.SessionStatus
 import com.evplatform.driver.network.ApiClient
 import com.evplatform.driver.ui.theme.EVColor
+import com.evplatform.driver.ui.theme.EVRadius
 
 /**
  * Live session screen. `session` is expected to update via SessionSocket
@@ -77,7 +78,7 @@ fun ChargingSessionScreen(
             OutlinedButton(
                 onClick = onStop,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp)
+                shape = EVRadius.capsule
             ) { Text("Stop charging", color = EVColor.textMain) }
         }
     }
@@ -93,9 +94,9 @@ private fun FailBanner(claim: InsuranceClaim?) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(EVRadius.panel))
             .background(EVColor.red.copy(alpha = 0.12f))
-            .border(1.dp, EVColor.red, RoundedCornerShape(14.dp))
+            .border(1.dp, EVColor.red, RoundedCornerShape(EVRadius.panel))
             .padding(14.dp)
     ) {
         Text("⚠ Station fault", color = EVColor.red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -137,7 +138,7 @@ private fun ChargeRing(percent: Float, status: SessionStatus) {
 private fun RowScope.MiniStat(value: String, label: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(EVColor.bgPanel).padding(vertical = 12.dp)
+        modifier = Modifier.weight(1f).clip(RoundedCornerShape(EVRadius.element)).background(EVColor.bgPanel).padding(vertical = 12.dp)
     ) {
         Text(value, color = EVColor.textMain, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Text(label.uppercase(), color = EVColor.textMuted, fontSize = 9.sp)

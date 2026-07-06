@@ -36,7 +36,7 @@ struct PlugWatchReportSheet: View {
                     .frame(height: 80)
                     .padding(8)
                     .background(EVTheme.bgRaise)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: EVTheme.Radius.element))
             }
 
             if let resultMessage {
@@ -47,7 +47,7 @@ struct PlugWatchReportSheet: View {
                 Button("Cancel") { dismiss() }
                     .frame(maxWidth: .infinity).padding()
                     .background(EVTheme.bgRaise).foregroundColor(EVTheme.textMain)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .clipShape(Capsule())
 
                 Button {
                     Task { await submit() }
@@ -55,7 +55,7 @@ struct PlugWatchReportSheet: View {
                     Text(isSubmitting ? "Submitting…" : "Submit report")
                         .frame(maxWidth: .infinity).padding()
                         .background(EVTheme.lime).foregroundColor(EVTheme.bgDeep)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .clipShape(Capsule())
                 }
                 .disabled(isSubmitting)
             }

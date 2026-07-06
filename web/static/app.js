@@ -20,6 +20,7 @@ const state = {
   vehicles: [],
   connectorFilter: '',
   availableOnlyFilter: false,
+  radiusKm: 25,
   session: null,
   ws: null,
   idempotencyKeyByConnector: {},
@@ -156,8 +157,9 @@ function goTo(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.nav === name));
   document.querySelectorAll('.navlink').forEach(n => n.classList.toggle('on', n.dataset.nav === name));
 
+  if (name === 'map') loadStations();   // re-fetch so occupied/available reflects any session started elsewhere
   if (name === 'history') loadHistory();
-  if (name === 'account') loadWallet();
+  if (name === 'account') { loadWallet(); loadVehicleList(); loadPaymentMethodList(); }
 }
 document.querySelectorAll('[data-nav]').forEach(el => {
   el.addEventListener('click', () => goTo(el.dataset.nav));
@@ -186,6 +188,16 @@ function statusLabel(status) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+// Map pin color, in priority order: a real trust problem matters more than
+// momentary occupancy, so low reliability wins even if a connector happens
+// to be free right now. Otherwise: fully free / some free / fully occupied.
+function pinClass(station) {
+  if (station.reliability_score < 60) return 'fault';
+  if (station.connectors_available === 0) return 'full';
+  if (station.connectors_available < station.connectors_total) return 'partial';
+  return 'avail';
+}
+
 function initMapView() {
   // Deliberately not using navigator.geolocation: it triggers a native
   // permission prompt, and the seeded demo stations only exist around
@@ -196,7 +208,7 @@ function initMapView() {
 
 async function loadStations() {
   const params = new URLSearchParams({
-    lat: state.origin.lat, lng: state.origin.lng, radius_km: 50,
+    lat: state.origin.lat, lng: state.origin.lng, radius_km: state.radiusKm,
   });
   if (state.connectorFilter) params.set('connector_type', state.connectorFilter);
   if (state.availableOnlyFilter) params.set('available_only', 'true');
@@ -211,6 +223,11 @@ async function loadStations() {
   renderMapPins();
   if (state.stations.length && !state.selectedStationId) {
     selectStation(state.stations[0].id);
+  } else if (state.selectedStationId) {
+    // Refresh the already-open sheet too — otherwise its connector
+    // statuses (available/occupied) go stale even though the list/pins
+    // just updated.
+    selectStation(state.selectedStationId);
   }
 }
 
@@ -249,7 +266,7 @@ function renderMapPins() {
     const x = Math.max(20, Math.min(w - 20, w / 2 + dx));
     const y = Math.max(20, Math.min(h - 20, h / 2 + dy));
 
-    const cls = s.connectors_available > 0 ? 'avail' : (s.reliability_score < 60 ? 'fault' : 'busy');
+    const cls = pinClass(s);
     const pin = document.createElement('div');
     pin.className = `pin ${cls} ${s.id === state.selectedStationId ? 'sel' : ''}`;
     pin.style.top = y + 'px';
@@ -260,19 +277,34 @@ function renderMapPins() {
   });
 }
 
+// Filters are duplicated (desktop station-list-col + mobile overlay), so
+// "on" state syncs by value across both copies, not just the clicked element.
 document.querySelectorAll('[data-filter-connector]').forEach(chip => {
   chip.addEventListener('click', () => {
-    document.querySelectorAll('[data-filter-connector]').forEach(c => c.classList.remove('on'));
-    chip.classList.add('on');
     state.connectorFilter = chip.dataset.filterConnector;
+    document.querySelectorAll('[data-filter-connector]').forEach(c => {
+      c.classList.toggle('on', c.dataset.filterConnector === state.connectorFilter);
+    });
     loadStations();
   });
 });
 document.querySelectorAll('[data-filter-available]').forEach(chip => {
   chip.addEventListener('click', () => {
-    chip.classList.toggle('on');
-    state.availableOnlyFilter = chip.classList.contains('on');
+    state.availableOnlyFilter = !state.availableOnlyFilter;
+    document.querySelectorAll('[data-filter-available]').forEach(c => c.classList.toggle('on', state.availableOnlyFilter));
     loadStations();
+  });
+});
+
+// Radius slider is also duplicated (desktop + mobile) — keep both in sync.
+let radiusDebounceTimer = null;
+document.querySelectorAll('[data-radius-slider]').forEach(slider => {
+  slider.addEventListener('input', () => {
+    state.radiusKm = Number(slider.value);
+    document.querySelectorAll('[data-radius-slider]').forEach(s => { s.value = state.radiusKm; });
+    document.querySelectorAll('[data-radius-value]').forEach(el => { el.textContent = state.radiusKm; });
+    clearTimeout(radiusDebounceTimer);
+    radiusDebounceTimer = setTimeout(loadStations, 300);
   });
 });
 
@@ -570,6 +602,124 @@ async function loadWallet() {
     </div>
   `).join('');
 }
+
+// ---------------------------------------------------------------------------
+// Vehicles (Account view)
+// ---------------------------------------------------------------------------
+async function loadVehicleList() {
+  try {
+    state.vehicles = await api('/users/me/vehicles');
+  } catch (err) {
+    toast('Could not load vehicles: ' + err.message, 'error');
+    return;
+  }
+  const el = document.getElementById('vehicle-list');
+  if (!state.vehicles.length) {
+    el.innerHTML = '<div class="empty-state">No vehicles yet — add one below.</div>';
+    return;
+  }
+  el.innerHTML = state.vehicles.map(v => `
+    <div class="wallet-entry">
+      <div><div class="reason">${v.make} ${v.model}</div><div class="when">${v.connector_type} · ${v.battery_capacity_kwh} kWh</div></div>
+      <button class="btn btn-ghost" style="padding:6px 14px; font-size:12px;" data-remove-vehicle="${v.id}">Remove</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('[data-remove-vehicle]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await api(`/users/me/vehicles/${btn.dataset.removeVehicle}`, { method: 'DELETE' });
+        loadVehicleList();
+      } catch (err) {
+        toast('Could not remove vehicle: ' + err.message, 'error');
+      }
+    });
+  });
+}
+
+document.getElementById('add-vehicle-btn').addEventListener('click', async () => {
+  const make = document.getElementById('vehicle-make').value.trim();
+  const model = document.getElementById('vehicle-model').value.trim();
+  const connector_type = document.getElementById('vehicle-connector').value;
+  const battery_capacity_kwh = parseFloat(document.getElementById('vehicle-battery').value);
+  if (!make || !model || Number.isNaN(battery_capacity_kwh)) {
+    toast('Fill in make, model, and battery capacity.', 'error');
+    return;
+  }
+  try {
+    await api('/users/me/vehicles', { method: 'POST', body: { make, model, connector_type, battery_capacity_kwh } });
+    document.getElementById('vehicle-make').value = '';
+    document.getElementById('vehicle-model').value = '';
+    document.getElementById('vehicle-battery').value = '';
+    toast('Vehicle added.', 'success');
+    loadVehicleList();
+  } catch (err) {
+    toast('Could not add vehicle: ' + err.message, 'error');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Payment methods (Account view)
+// ---------------------------------------------------------------------------
+async function loadPaymentMethodList() {
+  let methods;
+  try {
+    methods = await api('/payments/methods');
+  } catch (err) {
+    toast('Could not load payment methods: ' + err.message, 'error');
+    return;
+  }
+  const el = document.getElementById('payment-method-list');
+  if (!methods.length) {
+    el.innerHTML = '<div class="empty-state">No cards yet — add one below.</div>';
+    return;
+  }
+  el.innerHTML = methods.map(m => `
+    <div class="wallet-entry">
+      <div><div class="reason">${m.brand.toUpperCase()} •••• ${m.last4}</div>${m.is_default ? '<div class="when" style="color:var(--lime);">Default</div>' : ''}</div>
+      <div style="display:flex; gap:6px;">
+        ${!m.is_default ? `<button class="btn btn-ghost" style="padding:6px 14px; font-size:12px;" data-set-default="${m.id}">Set default</button>` : ''}
+        <button class="btn btn-ghost" style="padding:6px 14px; font-size:12px;" data-remove-method="${m.id}">Remove</button>
+      </div>
+    </div>
+  `).join('');
+  el.querySelectorAll('[data-set-default]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await api(`/payments/methods/${btn.dataset.setDefault}/default`, { method: 'POST' });
+        loadPaymentMethodList();
+      } catch (err) {
+        toast('Could not set default: ' + err.message, 'error');
+      }
+    });
+  });
+  el.querySelectorAll('[data-remove-method]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await api(`/payments/methods/${btn.dataset.removeMethod}`, { method: 'DELETE' });
+        loadPaymentMethodList();
+      } catch (err) {
+        toast('Could not remove card: ' + err.message, 'error');
+      }
+    });
+  });
+}
+
+document.getElementById('add-card-btn').addEventListener('click', async () => {
+  const cardNumber = document.getElementById('card-number').value.trim();
+  if (cardNumber.length < 4) {
+    toast('Enter at least 4 digits.', 'error');
+    return;
+  }
+  try {
+    const { psp_token, last4 } = await api('/payments/methods/tokenize', { method: 'POST', body: { card_number: cardNumber, brand: 'visa' } });
+    await api('/payments/methods', { method: 'POST', body: { psp_token, last4 } });
+    document.getElementById('card-number').value = '';
+    toast('Card added.', 'success');
+    loadPaymentMethodList();
+  } catch (err) {
+    toast('Could not add card: ' + err.message, 'error');
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Plug Watch report modal

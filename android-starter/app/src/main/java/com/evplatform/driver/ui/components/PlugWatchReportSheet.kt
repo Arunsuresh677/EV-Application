@@ -15,6 +15,7 @@ import com.evplatform.driver.model.Connector
 import com.evplatform.driver.model.PlugWatchIssueType
 import com.evplatform.driver.network.ApiClient
 import com.evplatform.driver.ui.theme.EVColor
+import com.evplatform.driver.ui.theme.EVRadius
 import kotlinx.coroutines.launch
 
 /**
@@ -35,7 +36,7 @@ fun PlugWatchReportSheet(connector: Connector, apiClient: ApiClient, onDismiss: 
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .clip(RoundedCornerShape(topStart = EVRadius.container, topEnd = EVRadius.container))
             .background(EVColor.bgPanel)
             .padding(20.dp)
     ) {
@@ -52,7 +53,7 @@ fun PlugWatchReportSheet(connector: Connector, apiClient: ApiClient, onDismiss: 
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(EVRadius.element))
                     .background(EVColor.bgRaise)
                     .padding(12.dp)
                     .let { it }
@@ -88,10 +89,12 @@ fun PlugWatchReportSheet(connector: Connector, apiClient: ApiClient, onDismiss: 
             Button(
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(containerColor = EVColor.bgRaise, contentColor = EVColor.textMain),
+                shape = EVRadius.capsule,
                 modifier = Modifier.weight(1f)
             ) { Text("Cancel") }
 
             Button(
+                shape = EVRadius.capsule,
                 onClick = {
                     isSubmitting = true
                     scope.launch {

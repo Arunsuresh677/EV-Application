@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sqlite3
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
@@ -16,6 +18,13 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class RegisterOperatorRequest(BaseModel):
+    company_name: str
+    admin_name: str
     email: EmailStr
     password: str
 
@@ -43,6 +52,37 @@ def register(body: RegisterRequest):
     return {"token": token, "user": _public_user(user)}
 
 
+@router.post("/auth/register-operator", status_code=201)
+def register_operator(body: RegisterOperatorRequest):
+    """Self-service station operator signup — creates a new operator
+    (company) and its first station_admin user in one step, with no
+    existing account required. This is what lets a real charging network
+    sign up on their own instead of needing seed.py run on their behalf."""
+    conn = db.get_conn()
+    if conn.execute("SELECT 1 FROM users WHERE email=?", (body.email,)).fetchone():
+        raise HTTPException(status_code=409, detail="Email already registered")
+    if not body.company_name.strip():
+        raise HTTPException(status_code=422, detail="Company name is required")
+
+    pw_hash, salt = auth.hash_password(body.password)
+    operator_id = db.new_id()
+    admin_id = db.new_id()
+    now = db.now_iso()
+    with db.transaction() as c:
+        c.execute(
+            "INSERT INTO operators (id, company_name, status, created_at) VALUES (?, ?, 'active', ?)",
+            (operator_id, body.company_name.strip(), now),
+        )
+        c.execute(
+            """INSERT INTO users (id, name, email, password_hash, password_salt, role, operator_id, created_at)
+               VALUES (?, ?, ?, ?, ?, 'station_admin', ?, ?)""",
+            (admin_id, body.admin_name, body.email, pw_hash, salt, operator_id, now),
+        )
+    user = db.row_to_dict(conn.execute("SELECT * FROM users WHERE id=?", (admin_id,)).fetchone())
+    token = auth.issue_token(admin_id, "station_admin")
+    return {"token": token, "user": _public_user(user)}
+
+
 @router.post("/auth/login")
 def login(body: LoginRequest):
     conn = db.get_conn()
@@ -58,6 +98,13 @@ def get_me(user: dict = Depends(auth.get_current_user)):
     return _public_user(user)
 
 
+class VehicleRequest(BaseModel):
+    make: str
+    model: str
+    connector_type: str
+    battery_capacity_kwh: float
+
+
 @router.get("/users/me/vehicles")
 def get_my_vehicles(user: dict = Depends(auth.get_current_user)):
     conn = db.get_conn()
@@ -67,3 +114,31 @@ def get_my_vehicles(user: dict = Depends(auth.get_current_user)):
             (user["id"],),
         ).fetchall()
     )
+
+
+@router.post("/users/me/vehicles", status_code=201)
+def add_vehicle(body: VehicleRequest, user: dict = Depends(auth.get_current_user)):
+    if body.connector_type not in ("CCS2", "CHAdeMO", "TYPE2", "NACS"):
+        raise HTTPException(status_code=422, detail="Invalid connector_type")
+
+    vehicle_id = db.new_id()
+    with db.transaction() as c:
+        c.execute(
+            """INSERT INTO vehicles (id, user_id, make, model, connector_type, battery_capacity_kwh, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (vehicle_id, user["id"], body.make, body.model, body.connector_type, body.battery_capacity_kwh, db.now_iso()),
+        )
+    return db.row_to_dict(db.get_conn().execute("SELECT * FROM vehicles WHERE id=?", (vehicle_id,)).fetchone())
+
+
+@router.delete("/users/me/vehicles/{vehicle_id}", status_code=204)
+def delete_vehicle(vehicle_id: str, user: dict = Depends(auth.get_current_user)):
+    conn = db.get_conn()
+    vehicle = db.row_to_dict(conn.execute("SELECT id FROM vehicles WHERE id=? AND user_id=?", (vehicle_id, user["id"])).fetchone())
+    if vehicle is None:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    try:
+        with db.transaction() as c:
+            c.execute("DELETE FROM vehicles WHERE id=?", (vehicle_id,))
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="This vehicle has charging history and can't be deleted")

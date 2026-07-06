@@ -24,6 +24,18 @@ enum EVTheme {
             .system(size: size, weight: weight, design: .default)
         }
     }
+
+    /// Concentric radius system — mirrors web/static/styles.css exactly, so
+    /// driver-web and driver-iOS read as the same shape language. Each step
+    /// is the level above it minus that container's own padding, so nested
+    /// corners share a center point instead of looking arbitrary. Capsule
+    /// shapes (buttons, pills, badges) use SwiftUI's native `Capsule()` —
+    /// that's already precisely radius = height/2, no numeric token needed.
+    enum Radius {
+        static let container: CGFloat = 24  // outermost shells: StationDetailSheet, full-screen cards
+        static let panel: CGFloat = 16       // one level in: cards, banners
+        static let element: CGFloat = 10     // one level in from a panel: stat boxes, small inputs
+    }
 }
 
 extension Color {
