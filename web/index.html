@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoltPath — EV Charging</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath</div>
+
+    <form id="login-form">
+      <div class="field"><label>Email</label><input type="email" id="login-email" value="driver@demo.dev" required></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" value="chargeme123" required></div>
+      <p class="auth-error" id="login-error"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log in</button>
+    </form>
+
+    <form id="register-form" class="hidden">
+      <div class="field"><label>Name</label><input type="text" id="register-name" required></div>
+      <div class="field"><label>Email</label><input type="email" id="register-email" required></div>
+      <div class="field"><label>Password</label><input type="password" id="register-password" required minlength="6"></div>
+      <p class="auth-error" id="register-error"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Create account</button>
+    </form>
+
+    <div class="auth-switch">
+      <span id="switch-to-register">New here? <a>Create an account</a></span>
+      <span id="switch-to-login" class="hidden">Already have an account? <a>Log in</a></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div class="app hidden" id="main-app">
+  <div class="topnav">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath</div>
+    <div class="navlinks">
+      <div class="navlink on" data-nav="map">Map</div>
+      <div class="navlink" data-nav="charging">Charging</div>
+      <div class="navlink" data-nav="history">History</div>
+      <div class="navlink" data-nav="account">Account</div>
+    </div>
+    <div class="nav-search"><span>🔍</span><span>Search chargers, address, station…</span></div>
+    <div class="nav-right">
+      <div class="pill wallet-pill" data-nav="account"><span class="dot live"></span><span id="wallet-pill-balance">$0.00</span></div>
+      <div class="avatar" id="avatar" data-nav="account">--</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ============ VIEW: MAP ============ -->
+    <div class="view active" id="view-map">
+      <div class="map-shell">
+        <div class="station-list-col">
+          <div class="filters">
+            <div class="chip on" data-filter-connector="">All connectors</div>
+            <div class="chip" data-filter-connector="CCS2">CCS2</div>
+            <div class="chip" data-filter-connector="TYPE2">Type 2</div>
+            <div class="chip" data-filter-available="1">Available now</div>
+          </div>
+          <div class="station-list-scroll" id="station-list-scroll">
+            <!-- populated by app.js -->
+          </div>
+        </div>
+
+        <div class="map-canvas" id="map-canvas">
+          <div class="me" id="me-dot" style="top:50%; left:50%;"></div>
+          <!-- pins populated by app.js -->
+          <div class="search-float"><span>🔍</span><span>Search chargers, address, station…</span></div>
+        </div>
+
+        <!-- station detail: bottom sheet on mobile, right rail on desktop -->
+        <div class="sheet" id="station-sheet">
+          <span class="grabber"></span>
+          <div id="sheet-content">
+            <div class="empty-state">Pick a station on the map to see connectors and trust scores.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: CHARGING ============ -->
+    <div class="view" id="view-charging">
+      <div class="header-pad">
+        <div class="eyebrow" id="charging-subtitle">No active session</div>
+        <h1 class="title">Charging session</h1>
+      </div>
+
+      <div class="charge-wrap" id="charge-wrap">
+        <div class="empty-state" id="charging-empty">Start a session from the map to see it here.</div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: HISTORY ============ -->
+    <div class="view" id="view-history">
+      <div class="header-pad">
+        <div class="eyebrow" id="history-subtitle">Charging history</div>
+        <h1 class="title">Charging history</h1>
+      </div>
+
+      <div class="hist-wrap">
+        <div id="hist-rows"></div>
+        <table class="hist-table">
+          <thead><tr><th>Date</th><th>Station</th><th>Status</th><th>Energy</th><th style="text-align:right;">Cost</th></tr></thead>
+          <tbody id="hist-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: ACCOUNT / WALLET ============ -->
+    <div class="view" id="view-account">
+      <div class="header-pad">
+        <div class="eyebrow">Guaranteed-charge insurance credits</div>
+        <h1 class="title">Your wallet</h1>
+      </div>
+      <div class="account-wrap">
+        <div class="card">
+          <div class="eyebrow" style="margin:0;">Balance</div>
+          <div class="wallet-balance" id="wallet-balance">$0.00</div>
+          <div style="color:var(--muted); font-size:12px;">Auto-credited whenever a Guaranteed connector fails you.</div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="eyebrow">Activity</div>
+          <div id="wallet-entries"><div class="empty-state">No credits yet.</div></div>
+        </div>
+        <button class="btn btn-ghost" style="width:100%; margin-top:20px;" id="logout-btn">Log out</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tabbar">
+    <div class="tab on" data-nav="map"><div class="ic">📍</div>Map</div>
+    <div class="tab" data-nav="charging"><div class="ic">⚡</div>Charging</div>
+    <div class="tab" data-nav="history"><div class="ic">🧾</div>History</div>
+    <div class="tab" data-nav="account"><div class="ic">👤</div>Account</div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Plug Watch report ============ -->
+<div class="modal-overlay hidden" id="report-modal-overlay">
+  <div class="modal">
+    <h1 class="title" style="font-size:18px;">Report an issue</h1>
+    <p style="color:var(--muted); font-size:13px; margin-top:4px;">Two reports on a connector the network still shows as fine will auto-flag it — Plug Watch catches faults the hardware feed misses.</p>
+    <div class="field" style="margin-top:14px;">
+      <label>Issue type</label>
+      <select id="report-issue-type">
+        <option value="wont_charge">Won't charge</option>
+        <option value="damaged">Damaged / unsafe</option>
+        <option value="blocked">Blocked by another vehicle</option>
+        <option value="wrong_status">Shows wrong status in app</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Details (optional)</label>
+      <textarea id="report-note" placeholder="What happened?"></textarea>
+    </div>
+    <div class="modal-row">
+      <button class="btn btn-ghost" id="report-cancel">Cancel</button>
+      <button class="btn btn-primary" id="report-submit">Submit report</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

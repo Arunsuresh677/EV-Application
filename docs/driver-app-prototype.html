@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EV Driver App — Prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg-deep:#0B0F14;
+    --bg-panel:#131A21;
+    --bg-raise:#1B2530;
+    --line:#232F3B;
+    --lime:#B4F461;
+    --amber:#FFB454;
+    --red:#FF6B5E;
+    --text:#F2F6F5;
+    --muted:#7C8B93;
+    --mono: 'JetBrains Mono', monospace;
+    --disp: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:#05070A; font-family:var(--body); color:var(--text);}
+
+  .stage{
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:40px 16px;
+  }
+  .phone{
+    width:390px; height:820px;
+    background:var(--bg-deep);
+    border-radius:44px;
+    border:10px solid #000;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px #1a1a1a;
+    position:relative;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .notch{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:120px; height:24px; background:#000; border-radius:0 0 16px 16px; z-index:50;
+  }
+  .statusbar{
+    height:46px; flex:0 0 auto; display:flex; align-items:flex-end; justify-content:space-between;
+    padding:0 22px 6px; font-family:var(--mono); font-size:12px; color:var(--muted);
+  }
+
+  .screen{
+    flex:1; overflow-y:auto; overflow-x:hidden; position:relative;
+    scrollbar-width:none;
+  }
+  .screen::-webkit-scrollbar{display:none;}
+
+  /* ---------- shared bits ---------- */
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); margin:0 0 4px;
+  }
+  h1.title{ font-family:var(--disp); font-weight:600; font-size:26px; margin:0; letter-spacing:-0.01em;}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--mono); font-size:11px; padding:5px 10px; border-radius:100px;
+    background:var(--bg-raise); color:var(--muted); border:1px solid var(--line);
+  }
+  .dot{width:6px;height:6px;border-radius:50%;}
+  .dot.live{background:var(--lime); box-shadow:0 0 8px var(--lime);}
+  .dot.warn{background:var(--amber); box-shadow:0 0 8px var(--amber);}
+  .dot.dead{background:var(--red); box-shadow:0 0 8px var(--red);}
+
+  .btn{
+    font-family:var(--body); font-weight:600; font-size:15px;
+    border:none; border-radius:14px; padding:16px; width:100%;
+    cursor:pointer; transition:transform .15s ease, opacity .15s ease;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{ background:var(--lime); color:#0B0F14; }
+  .btn-ghost{ background:var(--bg-raise); color:var(--text); border:1px solid var(--line);}
+
+  .card{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:18px; padding:16px;
+  }
+
+  /* ---------- MAP SCREEN ---------- */
+  .map-wrap{ position:relative; height:340px; background:
+      radial-gradient(circle at 30% 20%, #16202b 0%, #0B0F14 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #1a2530 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, #1a2530 40px);
+    overflow:hidden;
+  }
+  .map-road{
+    position:absolute; background:#182029;
+  }
+  .r1{ top:120px; left:-20px; width:430px; height:26px; transform:rotate(-4deg);}
+  .r2{ top:0; left:230px; width:26px; height:340px; transform:rotate(8deg);}
+
+  .pin{
+    position:absolute; width:34px; height:34px; border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg); display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 14px rgba(0,0,0,0.5); cursor:pointer;
+  }
+  .pin span{ transform:rotate(45deg); font-family:var(--mono); font-size:10px; font-weight:700;}
+  .pin.avail{ background:var(--lime); color:#0B0F14;}
+  .pin.busy{ background:var(--amber); color:#0B0F14;}
+  .pin.fault{ background:var(--red); color:#0B0F14; opacity:.7;}
+  .pin.sel{ width:44px; height:44px; z-index:5; box-shadow:0 0 0 6px rgba(180,244,97,0.18), 0 8px 18px rgba(0,0,0,.6);}
+
+  .me{
+    position:absolute; width:14px; height:14px; border-radius:50%; background:#5AA9FF;
+    box-shadow:0 0 0 6px rgba(90,169,255,0.25);
+  }
+
+  .search-float{
+    position:absolute; top:14px; left:14px; right:14px; z-index:10;
+    background:rgba(19,26,33,0.9); backdrop-filter:blur(8px);
+    border:1px solid var(--line); border-radius:16px; padding:12px 14px;
+    display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted);
+  }
+  .filters{ display:flex; gap:8px; padding:12px 16px; overflow-x:auto; }
+  .filters::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto; font-family:var(--mono); font-size:11px; padding:8px 12px; border-radius:100px;
+    background:var(--bg-panel); border:1px solid var(--line); color:var(--muted); white-space:nowrap;
+  }
+  .chip.on{ background:var(--lime); color:#0B0F14; border-color:var(--lime); font-weight:700;}
+
+  .station-list{ padding:4px 16px 100px; display:flex; flex-direction:column; gap:10px;}
+  .srow{ display:flex; gap:12px; padding:14px; align-items:center; }
+  .srow .thumb{
+    width:46px; height:46px; border-radius:12px; background:var(--bg-raise);
+    display:flex; align-items:center; justify-content:center; font-size:20px; flex:0 0 auto;
+  }
+  .srow .meta{ flex:1; min-width:0;}
+  .srow .name{ font-weight:600; font-size:14.5px; margin:0 0 3px;}
+  .srow .sub{ color:var(--muted); font-size:12px; font-family:var(--mono);}
+  .srow .price{ text-align:right; font-family:var(--mono); font-size:14px; font-weight:700; color:var(--lime); flex:0 0 auto;}
+
+  /* bottom nav */
+  .tabbar{
+    position:absolute; bottom:0; left:0; right:0; height:78px;
+    background:rgba(11,15,20,0.92); backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    display:flex; align-items:flex-start; justify-content:space-around; padding-top:12px; z-index:20;
+  }
+  .tab{ display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10px; color:var(--muted); font-family:var(--mono); cursor:pointer;}
+  .tab.on{ color:var(--lime);}
+  .tab .ic{ font-size:18px;}
+
+  /* ---------- STATION DETAIL SHEET ---------- */
+  .sheet{
+    position:absolute; left:0; right:0; bottom:0; top:56%;
+    background:var(--bg-panel); border-radius:24px 24px 0 0; border:1px solid var(--line); border-bottom:none;
+    padding:14px 18px 100px; overflow-y:auto; z-index:15;
+    box-shadow:0 -20px 40px rgba(0,0,0,0.4);
+  }
+  .grabber{ width:36px; height:4px; background:var(--line); border-radius:4px; margin:0 auto 14px;}
+  .conn-row{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--line);}
+  .conn-row:last-child{ border-bottom:none;}
+  .conn-type{ font-family:var(--mono); font-weight:700; font-size:13px;}
+  .conn-kw{ color:var(--muted); font-size:12px; font-family:var(--mono);}
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin:14px 0;}
+  .stat-box{ background:var(--bg-raise); border-radius:12px; padding:10px; text-align:center;}
+  .stat-box .v{ font-family:var(--mono); font-weight:700; font-size:16px;}
+  .stat-box .l{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+
+  /* ---------- CHARGING SCREEN ---------- */
+  .charge-screen{ padding:20px 20px 110px; display:flex; flex-direction:column; align-items:center; gap:22px;}
+  .ring-wrap{ position:relative; width:230px; height:230px; margin-top:10px;}
+  .ring-center{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .ring-pct{ font-family:var(--mono); font-size:44px; font-weight:700; letter-spacing:-1px;}
+  .ring-pct span{ font-size:20px; color:var(--muted);}
+  .ring-label{ font-family:var(--mono); font-size:11px; color:var(--amber); letter-spacing:.1em; margin-top:2px;}
+  .charge-stats{ display:flex; width:100%; gap:10px;}
+  .charge-stats .card{ flex:1; text-align:center;}
+  .charge-stats .v{ font-family:var(--mono); font-weight:700; font-size:19px;}
+  .charge-stats .l{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:4px;}
+  .pulse{ animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.55;} }
+
+  /* ---------- HISTORY SCREEN ---------- */
+  .hist-row{ display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--line);}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-date{ font-family:var(--mono); font-size:11px; color:var(--muted);}
+  .hist-name{ font-weight:600; font-size:14px; margin-top:2px;}
+  .hist-amt{ font-family:var(--mono); font-weight:700; font-size:15px; text-align:right;}
+  .hist-kwh{ font-family:var(--mono); font-size:11px; color:var(--muted); text-align:right; margin-top:2px;}
+
+  .header-pad{ padding:20px 20px 6px;}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="statusbar"><span>9:41</span><span>● ● ● 5G  ⌁ 78%</span></div>
+
+    <!-- ============ SCREEN: MAP ============ -->
+    <div class="screen" id="screen-map">
+      <div class="map-wrap">
+        <div class="map-road r1"></div>
+        <div class="map-road r2"></div>
+        <div class="me" style="top:190px; left:180px;"></div>
+
+        <div class="pin avail" style="top:70px; left:80px;" onclick="showStation('sunrise')"><span>₹18</span></div>
+        <div class="pin sel avail" style="top:140px; left:210px;" onclick="showStation('koramangala')"><span>₹21</span></div>
+        <div class="pin busy" style="top:230px; left:100px;" onclick="showStation('busy1')"><span>₹19</span></div>
+        <div class="pin fault" style="top:60px; left:280px;" onclick="showStation('fault1')"><span>✕</span></div>
+        <div class="pin avail" style="top:260px; left:290px;" onclick="showStation('sunrise')"><span>₹17</span></div>
+
+        <div class="search-float">
+          <span>🔍</span>
+          <span>Search chargers, address, station…</span>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="chip on">All connectors</div>
+        <div class="chip">CCS2</div>
+        <div class="chip">Type 2</div>
+        <div class="chip">NACS</div>
+        <div class="chip">150kW+</div>
+        <div class="chip">Available now</div>
+      </div>
+
+      <!-- Station detail sheet, shown by default over the map for screen 1 -->
+      <div class="sheet" id="sheet-koramangala">
+        <div class="grabber"></div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="eyebrow">0.4 km away · Koramangala</div>
+            <h1 class="title" style="font-size:20px;">HyperCharge Koramangala</h1>
+          </div>
+          <div class="pill"><span class="dot live"></span>96% reliable</div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-box"><div class="v">₹21</div><div class="l">per kWh</div></div>
+          <div class="stat-box"><div class="v">180kW</div><div class="l">max speed</div></div>
+          <div class="stat-box"><div class="v">3/4</div><div class="l">free now</div></div>
+        </div>
+
+        <div class="eyebrow" style="margin-top:6px;">Connectors</div>
+        <div class="conn-row">
+          <div><div class="conn-type">CCS2 · A1</div><div class="conn-kw">180 kW DC</div></div>
+          <div class="pill"><span class="dot live"></span>Available</div>
+        </div>
+        <div class="conn-row">
+          <div><div class="conn-type">CCS2 · A2</div><div class="conn-kw">180 kW DC</div></div>
+          <div class="pill"><span class="dot warn"></span>Occupied · 12m left</div>
+        </div>
+        <div class="conn-row">
+          <div><div class="conn-type">Type 2 · B1</div><div class="conn-kw">22 kW AC</div></div>
+          <div class="pill"><span class="dot live"></span>Available</div>
+        </div>
+
+        <div style="margin-top:16px; display:flex; flex-direction:column; gap:10px;">
+          <button class="btn btn-primary" onclick="goTo('charging')">Start charging · A1</button>
+          <button class="btn btn-ghost">Reserve for later</button>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab on"><div class="ic">📍</div>Map</div>
+        <div class="tab" onclick="goTo('charging')"><div class="ic">⚡</div>Charging</div>
+        <div class="tab" onclick="goTo('history')"><div class="ic">🧾</div>History</div>
+        <div class="tab"><div class="ic">👤</div>Account</div>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN: CHARGING (live session) ============ -->
+    <div class="screen" id="screen-charging" style="display:none;">
+      <div class="header-pad">
+        <div class="eyebrow">HyperCharge Koramangala · Connector A1</div>
+        <h1 class="title">Charging session</h1>
+      </div>
+
+      <div class="charge-screen">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 230 230" width="230" height="230">
+            <circle cx="115" cy="115" r="100" fill="none" stroke="#1B2530" stroke-width="14"/>
+            <circle cx="115" cy="115" r="100" fill="none" stroke="#FFB454" stroke-width="14"
+              stroke-linecap="round" stroke-dasharray="628" stroke-dashoffset="245"
+              transform="rotate(-90 115 115)"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-pct pulse">61<span>%</span></div>
+            <div class="ring-label">● CHARGING</div>
+          </div>
+        </div>
+
+        <div class="charge-stats">
+          <div class="card"><div class="v">34.2</div><div class="l">kWh delivered</div></div>
+          <div class="card"><div class="v">₹718</div><div class="l">cost so far</div></div>
+          <div class="card"><div class="v">22 min</div><div class="l">to 80%</div></div>
+        </div>
+
+        <div class="card" style="width:100%;">
+          <div style="display:flex; justify-content:space-between; font-size:13px;">
+            <span style="color:var(--muted);">Charge rate</span>
+            <span style="font-family:var(--mono); font-weight:700;">142 kW</span>
+          </div>
+          <div style="height:6px; background:var(--bg-raise); border-radius:6px; margin-top:8px; overflow:hidden;">
+            <div style="width:79%; height:100%; background:var(--amber);"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-ghost" style="width:100%;">Stop charging</button>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab" onclick="goTo('map')"><div class="ic">📍</div>Map</div>
+        <div class="tab on"><div class="ic">⚡</div>Charging</div>
+        <div class="tab" onclick="goTo('history')"><div class="ic">🧾</div>History</div>
+        <div class="tab"><div class="ic">👤</div>Account</div>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN: HISTORY ============ -->
+    <div class="screen" id="screen-history" style="display:none;">
+      <div class="header-pad">
+        <div class="eyebrow">This month · 8 sessions</div>
+        <h1 class="title">Charging history</h1>
+      </div>
+      <div style="padding:6px 16px 100px;">
+        <div class="hist-row">
+          <div><div class="hist-date">Today · 8:12 AM</div><div class="hist-name">HyperCharge Koramangala</div></div>
+          <div><div class="hist-amt">₹718.20</div><div class="hist-kwh">34.2 kWh</div></div>
+        </div>
+        <div class="hist-row">
+          <div><div class="hist-date">Jul 3 · 6:40 PM</div><div class="hist-name">Sunrise Mall Charging</div></div>
+          <div><div class="hist-amt">₹432.00</div><div class="hist-kwh">24.0 kWh</div></div>
+        </div>
+        <div class="hist-row">
+          <div><div class="hist-date">Jun 29 · 7:05 AM</div><div class="hist-name">Home wallbox</div></div>
+          <div><div class="hist-amt">₹210.50</div><div class="hist-kwh">18.5 kWh</div></div>
+        </div>
+        <div class="hist-row">
+          <div><div class="hist-date">Jun 24 · 1:15 PM</div><div class="hist-name">Highway Fastcharge NH48</div></div>
+          <div><div class="hist-amt">₹960.00</div><div class="hist-kwh">42.6 kWh</div></div>
+        </div>
+        <div class="hist-row">
+          <div><div class="hist-date">Jun 20 · 9:30 AM</div><div class="hist-name">Sunrise Mall Charging</div></div>
+          <div><div class="hist-amt">₹388.75</div><div class="hist-kwh">21.6 kWh</div></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab" onclick="goTo('map')"><div class="ic">📍</div>Map</div>
+        <div class="tab" onclick="goTo('charging')"><div class="ic">⚡</div>Charging</div>
+        <div class="tab on"><div class="ic">🧾</div>History</div>
+        <div class="tab"><div class="ic">👤</div>Account</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function goTo(name){
+  document.getElementById('screen-map').style.display = name==='map' ? 'block':'none';
+  document.getElementById('screen-charging').style.display = name==='charging' ? 'flex':'none';
+  document.getElementById('screen-history').style.display = name==='history' ? 'block':'none';
+}
+function showStation(id){
+  // in this prototype all pins reveal the same sample sheet — kept simple on purpose
+  document.getElementById('sheet-koramangala').scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>

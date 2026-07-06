@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ev-backend",
+      "runtimeExecutable": "C:/Users/ELCOT/AppData/Local/Programs/Python/Python313/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "cwd": "C:/Users/ELCOT/Downloads/ev/backend",
+      "port": 8000
+    }
+  ]
+}

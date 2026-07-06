@@ -1,0 +1,296 @@
+openapi: 3.1.0
+info:
+  title: EV Charging Platform API
+  version: "1.0"
+  description: >
+    Core REST surface for driver, fleet, and operator clients. Real-time
+    session telemetry (live kWh/cost) is delivered over a separate
+    WebSocket channel (/ws/sessions/{session_id}) fed by the OCPP Central
+    System — not polled over REST.
+servers:
+  - url: https://api.evplatform.com/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /stations/search:
+    get:
+      summary: Search nearby stations
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number }
+        - name: lng
+          in: query
+          required: true
+          schema: { type: number }
+        - name: radius_km
+          in: query
+          schema: { type: number, default: 10 }
+        - name: connector_type
+          in: query
+          schema: { type: string, enum: [CCS2, CHAdeMO, TYPE2, NACS] }
+        - name: min_power_kw
+          in: query
+          schema: { type: number }
+        - name: available_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Matching stations with live connector status
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StationSummary" }
+
+  /stations/{stationId}:
+    get:
+      summary: Station detail — connectors, pricing, reliability scores
+      parameters:
+        - { name: stationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Full station detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StationDetail" }
+
+  /sessions:
+    post:
+      summary: Start a charging session (triggers RemoteStartTransaction)
+      description: >
+        Requires an Idempotency-Key header. A retried request with the same
+        key returns the original session rather than starting a second one.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [connector_id, vehicle_id]
+              properties:
+                connector_id: { type: string, format: uuid }
+                vehicle_id: { type: string, format: uuid }
+                reservation_id: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Session created and RemoteStartTransaction dispatched
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "409":
+          description: Connector no longer available
+
+  /sessions/{sessionId}/stop:
+    post:
+      summary: Stop a charging session (triggers RemoteStopTransaction)
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Stop dispatched; final cost settles once last MeterValues land
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+
+  /sessions/{sessionId}:
+    get:
+      summary: Get session status (poll fallback; prefer the WebSocket channel for live UI)
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Current session state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+
+  /users/me/sessions:
+    get:
+      summary: Charging history for the authenticated user
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: before, in: query, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Paginated session history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Session" }
+
+  /reservations:
+    post:
+      summary: Reserve a connector in advance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [connector_id, start_time]
+              properties:
+                connector_id: { type: string, format: uuid }
+                start_time: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Reservation created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reservation" }
+
+  /operator/stations/{stationId}/tariffs:
+    put:
+      summary: Update pricing for a station (operator-only)
+      security:
+        - bearerAuth: [station_admin]
+      parameters:
+        - { name: stationId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Tariff" }
+      responses:
+        "200": { description: Tariff updated }
+
+  /operator/stations/{stationId}/analytics:
+    get:
+      summary: Revenue and utilization analytics for a station (operator-only)
+      parameters:
+        - { name: stationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Revenue, utilization, session counts by period
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StationAnalytics" }
+
+  /fleet/vehicles:
+    get:
+      summary: Fleet-wide vehicle roster with live charge status (fleet_manager-only)
+      responses:
+        "200":
+          description: Roster with status
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FleetVehicleStatus" }
+
+  /ocpp/webhook/boot-notification:
+    post:
+      summary: Internal — Central System forwards BootNotification events
+      description: Not called by client apps; consumed by the OCPP Central System service.
+      responses:
+        "200": { description: Acknowledged }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    StationSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        distance_km: { type: number }
+        min_price_per_kwh: { type: number }
+        connectors_available: { type: integer }
+        connectors_total: { type: integer }
+        reliability_score: { type: number, description: "0-100, per-station rollup" }
+
+    StationDetail:
+      allOf:
+        - $ref: "#/components/schemas/StationSummary"
+        - type: object
+          properties:
+            address: { type: string }
+            connectors:
+              type: array
+              items: { $ref: "#/components/schemas/Connector" }
+            tariff: { $ref: "#/components/schemas/Tariff" }
+
+    Connector:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [CCS2, CHAdeMO, TYPE2, NACS] }
+        power_kw: { type: number }
+        status: { type: string, enum: [available, occupied, faulted, reserved] }
+        reliability_score: { type: number }
+
+    Session:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        connector_id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, active, completed, failed, stopped_remotely] }
+        start_time: { type: string, format: date-time }
+        end_time: { type: string, format: date-time, nullable: true }
+        energy_kwh: { type: number }
+        cost: { type: number }
+
+    Reservation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        connector_id: { type: string, format: uuid }
+        start_time: { type: string, format: date-time }
+        expiry_time: { type: string, format: date-time }
+        status: { type: string, enum: [pending, active, expired, cancelled, fulfilled] }
+
+    Tariff:
+      type: object
+      properties:
+        pricing_model: { type: string, enum: [per_kwh, per_minute, flat] }
+        rate: { type: number }
+        time_of_day_rules:
+          type: array
+          items:
+            type: object
+            properties:
+              start: { type: string }
+              end: { type: string }
+              multiplier: { type: number }
+
+    StationAnalytics:
+      type: object
+      properties:
+        revenue_total: { type: number }
+        sessions_count: { type: integer }
+        utilization_pct: { type: number }
+        by_connector:
+          type: array
+          items:
+            type: object
+            properties:
+              connector_id: { type: string, format: uuid }
+              revenue: { type: number }
+              sessions: { type: integer }
+
+    FleetVehicleStatus:
+      type: object
+      properties:
+        vehicle_id: { type: string, format: uuid }
+        driver_name: { type: string }
+        battery_pct: { type: number }
+        status: { type: string, enum: [charging, idle, needs_attention] }
+        charge_cap_pct: { type: integer }
