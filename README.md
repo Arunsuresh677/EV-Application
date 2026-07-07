@@ -45,9 +45,25 @@ Station operators log in separately at `http://localhost:8000/operator`:
   second, unrelated operator seeded specifically to prove neither admin can
   see the other's stations, pricing, or tickets.
 
-New operators and drivers can also just register themselves — "New charging
-network? Register your company" on the operator login screen, or "New here?
-Create an account" on the driver one. No seeding required for either.
+Fleet managers log in at `http://localhost:8000/fleet`:
+
+- **Zenith Logistics manager:** `fleet-manager@demo.dev` / `fleet12345`,
+  managing one driver (`fleet-driver@demo.dev` / `fleet12345`) with a
+  company-owned vehicle already assigned — that driver has no personal
+  payment method on file, since fleet billing routes to the company's cost
+  report instead of a personal card.
+
+VoltPath's own platform team logs in at `http://localhost:8000/admin`:
+
+- **Platform super admin:** `admin@voltpath.dev` / `platform123` — sees
+  every operator on the platform (not just one), and can suspend/reactivate
+  one, which takes effect immediately on every request that operator's
+  admins make, not just their next login.
+
+New operators, fleets, and drivers can also just register themselves —
+"New charging network? Register your company" on the operator login screen,
+"Own a fleet of EVs? Register your company" on the fleet one, or "New here?
+Create an account" on the driver one. No seeding required for any of them.
 
 For anything beyond one local instance, set `EVPLATFORM_SECRET_KEY`
 (urlsafe-base64, 32+ random bytes) in the environment before starting the
@@ -57,17 +73,32 @@ tokens with the same key. Without it, a key is generated once into
 single instance. See [docs/trust-engine-addendum.md](docs/trust-engine-addendum.md) §6
 for this plus rate limiting and request logging.
 
+## Run the tests
+
+```
+cd backend
+python -m pytest
+```
+
+30 tests, no extra setup, runs in a few seconds against an isolated temp
+database (never touches `backend/data/evplatform.db`). Covers the trust
+engine (reliability scoring math, insurance auto-claims, Plug Watch
+auto-fault-flip), RBAC/multi-tenant isolation (operators can't see each
+other's data, suspension takes effect immediately), and session correctness
+(idempotency, vehicle ownership, the fleet-vehicle regression covered below).
+
 ## What's here
 
 ```
 backend/          FastAPI + SQLite. Real OCPP hardware/Central System is
                    simulated (backend/app/services/ocpp_sim.py) since none
                    exists in this environment — see addendum §6.
+                   tests/ — pytest suite, see "Run the tests" above.
 web/               index.html: the driver app — one HTML/CSS/JS codebase, two
                    real layouts (resize the window — <900px is mobile,
-                   >=900px is desktop). operator.html: the station operator
-                   dashboard (stations/connectors, pricing, analytics,
-                   maintenance tickets). No build step for either.
+                   >=900px is desktop). operator.html / fleet.html / admin.html:
+                   the station operator, fleet manager, and platform admin
+                   dashboards. No build step for any of them.
 ios-starter/       SwiftUI screens + APIClient, extended with Trust Engine+
                    (TrustBadge, Plug Watch report sheet, wallet/claim models).
 android-starter/   The same screens/features in Kotlin/Jetpack Compose.
@@ -98,6 +129,8 @@ back, not compiled.
 2. Wire the iOS/Android Xcode/Gradle projects and real maps SDK (Google Maps
    Platform / Mapbox) — the starters intentionally don't include build
    tooling or maps wiring yet.
-3. Build the fleet module (PRD §2, `fleet_manager`/`fleet_driver` roles) —
-   the operator dashboard is now built; fleet is the remaining role group
-   out of scope for this pass.
+
+Every role from the PRD's permission matrix (§2) now has a working
+surface — driver, station operator, fleet manager, and platform super
+admin — so the remaining gaps are the real-world integrations above, not
+missing product surface.

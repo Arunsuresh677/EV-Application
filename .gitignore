@@ -8,6 +8,7 @@ backend/data/secret.key
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
 
 # Original upload archives — content already extracted into the repo
 /files.zip
