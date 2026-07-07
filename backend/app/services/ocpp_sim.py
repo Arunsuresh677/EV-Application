@@ -18,7 +18,10 @@ import asyncio
 import random
 
 from .. import db
+from ..logging_config import get_logger
 from . import insurance, reliability
+
+log = get_logger("ocpp_sim")
 
 TICK_SECONDS = 1.5
 AUTO_REPAIR_DELAY_SECONDS = 20
@@ -168,7 +171,16 @@ async def _finish_session(session_id: str, connector_id: str, energy_kwh: float,
                 (db.new_id(), session_id, session["user_id"], cost, f"psp_mock_{db.new_id()[:12]}", db.now_iso()),
             )
 
-        reliability.recompute(c, connector_id)
+        new_score = reliability.recompute(c, connector_id)
+
+    log.info(
+        "session %s on connector %s -> %s (%.3f kWh, cost %.2f)%s",
+        session_id, connector_id, status, energy_kwh, cost,
+        f" — {fail_reason}" if fail_reason else "",
+    )
+    if claim:
+        log.info("insurance claim %s auto-filed for session %s: credit %.2f", claim["claim_id"], session_id, claim["credit_amount"])
+    log.info("connector %s reliability score now %.1f", connector_id, new_score)
 
     await _publish(
         session_id,

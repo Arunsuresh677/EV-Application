@@ -6,8 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
 from .. import auth, db
+from ..logging_config import get_logger
+from ..services import rate_limit
 
 router = APIRouter(tags=["auth"])
+log = get_logger("auth")
 
 
 class RegisterRequest(BaseModel):
@@ -85,9 +88,14 @@ def register_operator(body: RegisterOperatorRequest):
 
 @router.post("/auth/login")
 def login(body: LoginRequest):
+    # Keyed by email, not IP: this is what actually stops credential
+    # stuffing against one account regardless of which IP it comes from.
+    rate_limit.check(f"login:{body.email.lower()}", max_requests=10, window_seconds=300)
+
     conn = db.get_conn()
     user = db.row_to_dict(conn.execute("SELECT * FROM users WHERE email=?", (body.email,)).fetchone())
     if user is None or not auth.verify_password(body.password, user["password_hash"], user["password_salt"]):
+        log.warning("Failed login attempt for %s", body.email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = auth.issue_token(user["id"], user["role"])
     return {"token": token, "user": _public_user(user)}

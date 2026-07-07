@@ -45,6 +45,18 @@ Station operators log in separately at `http://localhost:8000/operator`:
   second, unrelated operator seeded specifically to prove neither admin can
   see the other's stations, pricing, or tickets.
 
+New operators and drivers can also just register themselves — "New charging
+network? Register your company" on the operator login screen, or "New here?
+Create an account" on the driver one. No seeding required for either.
+
+For anything beyond one local instance, set `EVPLATFORM_SECRET_KEY`
+(urlsafe-base64, 32+ random bytes) in the environment before starting the
+server — every instance behind a load balancer needs to validate auth
+tokens with the same key. Without it, a key is generated once into
+`backend/data/secret.key` for zero-setup local dev, which only works for a
+single instance. See [docs/trust-engine-addendum.md](docs/trust-engine-addendum.md) §6
+for this plus rate limiting and request logging.
+
 ## What's here
 
 ```

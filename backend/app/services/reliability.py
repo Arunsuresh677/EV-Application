@@ -12,6 +12,9 @@ from __future__ import annotations
 import sqlite3
 
 from .. import db
+from ..logging_config import get_logger
+
+log = get_logger("reliability")
 
 N_SESSIONS = 20
 HALF_LIFE_SESSIONS = 5
@@ -97,6 +100,10 @@ def handle_new_report(c: sqlite3.Connection, connector_id: str) -> dict:
             ),
         )
         ticket_opened = True
+        log.warning(
+            "connector %s auto-flagged faulted: %s Plug Watch reports vs OCPP status '%s' — maintenance ticket opened",
+            connector_id, unresolved, connector["status"],
+        )
 
     score = recompute(c, connector_id)
     return {"unresolved_reports": unresolved, "ticket_opened": ticket_opened, "reliability_score": score}

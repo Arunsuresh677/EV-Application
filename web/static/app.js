@@ -4,10 +4,13 @@
 
 const API_BASE = '/v1';
 
-// San Francisco demo point — matches the seeded station coordinates so
-// "nearby search" returns real results without needing geolocation
+// Coimbatore demo point — matches the seeded Gandhipuram/RS Puram stations
+// so "nearby search" returns real results without needing geolocation
 // permission in a sandboxed preview. Real geolocation is tried first anyway.
-const DEMO_ORIGIN = { lat: 37.7838, lng: -122.4008 };
+// The San Francisco demo stations (Downtown Transit Plaza, Riverside
+// Shopping Center, Harborview Garage) still exist in the seed data — they're
+// just too far from this origin to show up within the 100km slider max.
+const DEMO_ORIGIN = { lat: 11.0168, lng: 76.9558 };
 
 const state = {
   token: localStorage.getItem('voltpath_token') || null,
@@ -244,7 +247,7 @@ function renderStationList() {
         <div class="name">${s.name}</div>
         <div class="sub">${s.distance_km} km · ${s.reliability_score}% reliable · ${s.connectors_available}/${s.connectors_total} free</div>
       </div>
-      <div class="price">$${(s.min_price_per_kwh ?? 0).toFixed(2)}</div>
+      <div class="price">₹${(s.min_price_per_kwh ?? 0).toFixed(2)}</div>
     </div>
   `).join('');
   list.querySelectorAll('[data-station]').forEach(el => {
@@ -271,7 +274,7 @@ function renderMapPins() {
     pin.className = `pin ${cls} ${s.id === state.selectedStationId ? 'sel' : ''}`;
     pin.style.top = y + 'px';
     pin.style.left = x + 'px';
-    pin.innerHTML = `<span>$${(s.min_price_per_kwh ?? 0).toFixed(0)}</span>`;
+    pin.innerHTML = `<span>₹${(s.min_price_per_kwh ?? 0).toFixed(0)}</span>`;
     pin.addEventListener('click', () => selectStation(s.id));
     canvas.appendChild(pin);
   });
@@ -362,7 +365,7 @@ function renderStationSheet() {
     </div>
 
     <div class="stat-grid">
-      <div class="stat-box"><div class="v">$${(d.min_price_per_kwh ?? 0).toFixed(2)}</div><div class="l">per kWh</div></div>
+      <div class="stat-box"><div class="v">₹${(d.min_price_per_kwh ?? 0).toFixed(2)}</div><div class="l">per kWh</div></div>
       <div class="stat-box"><div class="v">${Math.max(...d.connectors.map(c => c.power_kw))}kW</div><div class="l">max speed</div></div>
       <div class="stat-box"><div class="v">${d.connectors_available}/${d.connectors_total}</div><div class="l">free now</div></div>
     </div>
@@ -437,7 +440,7 @@ function connectSessionSocket(sessionId) {
       state.session.fail_reason = msg.fail_reason;
       state.session.claim = msg.claim;
       if (msg.claim) {
-        toast(`Guaranteed charge failed — $${msg.claim.credit_amount.toFixed(2)} credited automatically`, 'success');
+        toast(`Guaranteed charge failed — ₹${msg.claim.credit_amount.toFixed(2)} credited automatically`, 'success');
         refreshWalletPill();
       }
     }
@@ -468,7 +471,7 @@ function renderChargingView() {
 
   let banner = '';
   if (s.status === 'failed') {
-    banner = `<div class="fail-banner"><div class="t">⚠ Station fault</div>${s.fail_reason || 'The connector faulted mid-session.'}${s.claim ? `<div style="margin-top:8px; color:var(--lime); font-weight:700;">✓ $${s.claim.credit_amount.toFixed(2)} guaranteed-charge credit issued automatically</div>` : ''}</div>`;
+    banner = `<div class="fail-banner"><div class="t">⚠ Station fault</div>${s.fail_reason || 'The connector faulted mid-session.'}${s.claim ? `<div style="margin-top:8px; color:var(--lime); font-weight:700;">✓ ₹${s.claim.credit_amount.toFixed(2)} guaranteed-charge credit issued automatically</div>` : ''}</div>`;
   } else if (s.status === 'completed') {
     banner = `<div class="claim-banner"><div class="t">✓ Session complete</div>Charged successfully. Payment captured.</div>`;
   } else if (s.status === 'stopped_remotely') {
@@ -491,7 +494,7 @@ function renderChargingView() {
 
     <div class="charge-stats">
       <div class="card"><div class="v">${(s.energy_kwh ?? 0).toFixed(2)}</div><div class="l">kWh delivered</div></div>
-      <div class="card"><div class="v">$${(s.cost ?? 0).toFixed(2)}</div><div class="l">cost so far</div></div>
+      <div class="card"><div class="v">₹${(s.cost ?? 0).toFixed(2)}</div><div class="l">cost so far</div></div>
       <div class="card"><div class="v">${s._power_kw ?? '--'}</div><div class="l">kW rate</div></div>
     </div>
 
@@ -543,10 +546,10 @@ async function loadHistory() {
       <div>
         <div class="hist-date">${formatDate(s.start_time || s.end_time)}</div>
         <div class="hist-name">Connector ${s.connector_id.slice(0, 8)}</div>
-        <div class="hist-status ${s.status}">${s.status}${s.claim_amount ? ` · $${s.claim_amount} credited` : ''}</div>
+        <div class="hist-status ${s.status}">${s.status}${s.claim_amount ? ` · ₹${s.claim_amount} credited` : ''}</div>
       </div>
       <div>
-        <div class="hist-amt">$${(s.cost ?? 0).toFixed(2)}</div>
+        <div class="hist-amt">₹${(s.cost ?? 0).toFixed(2)}</div>
         <div class="hist-kwh">${(s.energy_kwh ?? 0).toFixed(2)} kWh</div>
       </div>
     </div>
@@ -558,7 +561,7 @@ async function loadHistory() {
       <td>Connector ${s.connector_id.slice(0, 8)}</td>
       <td class="hist-status ${s.status}">${s.status}</td>
       <td>${(s.energy_kwh ?? 0).toFixed(2)} kWh</td>
-      <td style="text-align:right; font-family:var(--mono); font-weight:700;">$${(s.cost ?? 0).toFixed(2)}</td>
+      <td style="text-align:right; font-family:var(--mono); font-weight:700;">₹${(s.cost ?? 0).toFixed(2)}</td>
     </tr>
   `).join('');
 }
@@ -575,7 +578,7 @@ function formatDate(iso) {
 async function refreshWalletPill() {
   try {
     const wallet = await api('/users/me/credits');
-    document.getElementById('wallet-pill-balance').textContent = `$${wallet.balance.toFixed(2)}`;
+    document.getElementById('wallet-pill-balance').textContent = `₹${wallet.balance.toFixed(2)}`;
   } catch (_) {}
 }
 
@@ -587,8 +590,8 @@ async function loadWallet() {
     toast('Could not load wallet: ' + err.message, 'error');
     return;
   }
-  document.getElementById('wallet-balance').textContent = `$${wallet.balance.toFixed(2)}`;
-  document.getElementById('wallet-pill-balance').textContent = `$${wallet.balance.toFixed(2)}`;
+  document.getElementById('wallet-balance').textContent = `₹${wallet.balance.toFixed(2)}`;
+  document.getElementById('wallet-pill-balance').textContent = `₹${wallet.balance.toFixed(2)}`;
 
   const entriesEl = document.getElementById('wallet-entries');
   if (!wallet.entries.length) {
@@ -598,7 +601,7 @@ async function loadWallet() {
   entriesEl.innerHTML = wallet.entries.map(e => `
     <div class="wallet-entry">
       <div><div class="reason">${e.reason}</div><div class="when">${formatDate(e.created_at)}</div></div>
-      <div class="amt">+$${e.amount.toFixed(2)}</div>
+      <div class="amt">+₹${e.amount.toFixed(2)}</div>
     </div>
   `).join('');
 }

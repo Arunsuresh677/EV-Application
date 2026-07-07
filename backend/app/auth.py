@@ -20,14 +20,32 @@ from fastapi import Depends, Header, HTTPException
 from . import db
 
 SECRET_PATH = Path(__file__).resolve().parent.parent / "data" / "secret.key"
+SECRET_ENV_VAR = "EVPLATFORM_SECRET_KEY"
 TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7  # 7 days
+
+_secret_cache: bytes | None = None
 
 
 def _get_secret() -> bytes:
+    """A real deployment must set EVPLATFORM_SECRET_KEY (urlsafe-base64,
+    32+ random bytes) so every instance behind a load balancer validates
+    tokens with the same key, and so the secret lives in real secrets
+    infra instead of a file on one machine's disk. The locally-generated
+    file is a dev-only fallback for running this with zero setup."""
+    global _secret_cache
+    if _secret_cache is not None:
+        return _secret_cache
+
+    env_secret = os.environ.get(SECRET_ENV_VAR)
+    if env_secret:
+        _secret_cache = base64.urlsafe_b64decode(env_secret + "=" * (-len(env_secret) % 4))
+        return _secret_cache
+
     SECRET_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not SECRET_PATH.exists():
         SECRET_PATH.write_bytes(os.urandom(32))
-    return SECRET_PATH.read_bytes()
+    _secret_cache = SECRET_PATH.read_bytes()
+    return _secret_cache
 
 
 def hash_password(password: str, salt: str | None = None) -> tuple[str, str]:

@@ -285,7 +285,7 @@ document.getElementById('set-tariff-btn').addEventListener('click', async () => 
     // Path takes a station id purely to authorize the caller owns a station in
     // this operator account — the tariff itself applies operator-wide.
     await api(`/operator/stations/${state.stations[0].id}/tariffs`, { method: 'PUT', body: { pricing_model, rate } });
-    document.getElementById('tariff-current').textContent = `Current: ${pricing_model.replace('_', ' ')} at $${rate.toFixed(2)}`;
+    document.getElementById('tariff-current').textContent = `Current: ${pricing_model.replace('_', ' ')} at ₹${rate.toFixed(2)}`;
     toast('Pricing updated.', 'success');
   } catch (err) {
     toast('Could not update pricing: ' + err.message, 'error');
@@ -313,7 +313,7 @@ async function loadAnalytics(stationId) {
   }
 
   document.getElementById('analytics-stats').innerHTML = `
-    <div class="card"><div class="v">$${data.revenue_total.toFixed(2)}</div><div class="l">Revenue</div></div>
+    <div class="card"><div class="v">₹${data.revenue_total.toFixed(2)}</div><div class="l">Revenue</div></div>
     <div class="card"><div class="v">${data.sessions_count}</div><div class="l">Sessions</div></div>
     <div class="card"><div class="v">${data.utilization_pct}%</div><div class="l">Utilization</div></div>
   `;
@@ -324,7 +324,7 @@ async function loadAnalytics(stationId) {
         <div class="bar-row">
           <div class="label">${c.connector_id.slice(0, 8)}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${(c.revenue / maxRevenue) * 100}%"></div></div>
-          <div class="amt">$${c.revenue.toFixed(2)}</div>
+          <div class="amt">₹${c.revenue.toFixed(2)}</div>
         </div>
       `).join('')
     : '<div class="empty-state">No sessions yet on this station.</div>';

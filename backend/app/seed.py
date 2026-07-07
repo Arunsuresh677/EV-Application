@@ -114,6 +114,25 @@ def run() -> None:
                         {"power_kw": 11, "type": "TYPE2", "score": 88, "flaky": False},
                     ],
                 },
+                {
+                    "name": "Gandhipuram Charging Hub",
+                    "address": "Gandhipuram, Coimbatore",
+                    "lat": 11.0183,
+                    "lng": 76.9725,
+                    "connectors": [
+                        {"power_kw": 60, "type": "CCS2", "score": 96, "flaky": False},
+                        {"power_kw": 22, "type": "TYPE2", "score": 92, "flaky": False},
+                    ],
+                },
+                {
+                    "name": "RS Puram Fast Charge",
+                    "address": "DB Road, RS Puram, Coimbatore",
+                    "lat": 11.0018,
+                    "lng": 76.9629,
+                    "connectors": [
+                        {"power_kw": 30, "type": "CCS2", "score": 89, "flaky": False},
+                    ],
+                },
             ],
         )
 

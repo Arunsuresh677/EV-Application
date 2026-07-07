@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .. import auth, db
-from ..services import reliability
+from ..services import reliability, rate_limit
 
 router = APIRouter(tags=["trust"])
 
@@ -55,6 +55,13 @@ def get_reliability(connector_id: str, user: dict = Depends(auth.get_current_use
 def report_issue(connector_id: str, body: ReportRequest, user: dict = Depends(auth.get_current_user)):
     if body.issue_type not in ISSUE_TYPES:
         raise HTTPException(status_code=422, detail=f"issue_type must be one of {ISSUE_TYPES}")
+
+    # The auto-fault-flip only needs 2 reports (services/reliability.py) —
+    # without this, one account could spam a competitor's connector down
+    # by itself. This doesn't stop a multi-account attack, but that's a
+    # harder problem (device fingerprinting / account trust scoring) than
+    # this pass's scope.
+    rate_limit.check(f"plugwatch-report:{user['id']}", max_requests=5, window_seconds=600)
 
     conn = db.get_conn()
     connector = db.row_to_dict(conn.execute("SELECT id FROM connectors WHERE id=?", (connector_id,)).fetchone())

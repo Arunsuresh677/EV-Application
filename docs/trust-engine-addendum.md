@@ -87,7 +87,34 @@ them into api-spec.yaml proper.
 | `GET /v1/users/me/vehicles` | Driver's vehicles (needed to start a session) |
 | `POST /v1/auth/register`, `POST /v1/auth/login`, `GET /v1/users/me` | Minimal auth — the PRD's OAuth2/OIDC (Auth0/Keycloak) is the production target; this is a stdlib PBKDF2 + HMAC-token stand-in for the driver-only scope of this build |
 
-## 6. What's simulated vs. real in this build
+## 6. Production hardening (in place now)
+
+Three pieces of the PRD's §5 non-functional bar that don't need a real
+partner to build, so they're done now rather than deferred with the mocked
+payment/OCPP integrations:
+
+- **Rate limiting** (`backend/app/services/rate_limit.py`) — an in-memory
+  sliding-window limiter applied to session-start (10/min per user, the
+  PRD's explicit "prevent charge-fraud on stolen RFID/QR" ask), login
+  (10/5min per email, brute-force protection), and Plug Watch reports
+  (5/10min per user, so one account can't unilaterally spam a connector
+  into the auto-fault-flip in §4). In-memory is a single-process choice —
+  swapping to a shared store (Redis INCR+EXPIRE) for multi-instance
+  deployment doesn't change any call site.
+- **Secret management** (`backend/app/auth.py`) — the HMAC token secret now
+  reads from `EVPLATFORM_SECRET_KEY` (urlsafe-base64) first, falling back to
+  a locally-generated `data/secret.key` only for zero-setup local dev. A
+  real deployment behind a load balancer needs every instance validating
+  tokens with the same key, which only the env var path provides.
+- **Request logging** (`backend/app/logging_config.py` +
+  `main.py`'s `log_requests` middleware) — every request gets an id,
+  logged with method/path/status/duration and echoed in the
+  `X-Request-ID` response header, plus explicit log lines at trust-critical
+  events (session outcome, insurance claim filed, Plug Watch auto-flag,
+  failed login, rate-limit hits). Not the PRD's full OpenTelemetry tracing,
+  but enough to grep one request's or one session's story out of the log.
+
+## 7. What's simulated vs. real in this build
 
 There is no physical charger or OCPP Central System available in this
 environment. `backend/app/services/ocpp_sim.py` plays that role: it emits

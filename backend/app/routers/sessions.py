@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, WebSocket,
 from pydantic import BaseModel
 
 from .. import auth, db
-from ..services import ocpp_sim
+from ..services import ocpp_sim, rate_limit
 
 router = APIRouter(tags=["sessions"])
 
@@ -48,6 +48,11 @@ def start_session(
     existing = db.row_to_dict(conn.execute("SELECT * FROM sessions WHERE idempotency_key=?", (idempotency_key,)).fetchone())
     if existing:
         return _session_view(existing)
+
+    # Per the PRD's anti-fraud requirement: a burst of distinct start attempts
+    # from one account (e.g. testing a stolen RFID/QR across many connectors)
+    # should get slowed down, not silently allowed at full speed.
+    rate_limit.check(f"session-start:{user['id']}", max_requests=10, window_seconds=60)
 
     connector = db.row_to_dict(conn.execute("SELECT * FROM connectors WHERE id=?", (body.connector_id,)).fetchone())
     if connector is None:
