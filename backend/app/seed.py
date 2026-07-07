@@ -22,6 +22,10 @@ OPERATOR2_EMAIL = "beacon-admin@demo.dev"
 OPERATOR2_PASSWORD = "operate123"
 SUPER_ADMIN_EMAIL = "admin@voltpath.dev"
 SUPER_ADMIN_PASSWORD = "platform123"
+FLEET_MANAGER_EMAIL = "fleet-manager@demo.dev"
+FLEET_MANAGER_PASSWORD = "fleet12345"
+FLEET_DRIVER_EMAIL = "fleet-driver@demo.dev"
+FLEET_DRIVER_PASSWORD = "fleet12345"
 
 
 def _seed_operator(c, now: str, company_name: str, admin_email: str, admin_password: str, admin_name: str, stations: list[dict], tariff_rate: float) -> str:
@@ -193,10 +197,51 @@ def run() -> None:
             (payment_method_id, user_id, now),
         )
 
+        # Demo fleet: a company that owns EV vehicles and employs drivers —
+        # distinct from both a charging-network operator and a personal
+        # driver account. The driver has no payment method of their own,
+        # since "billing auto-routes to company" (PRD) — see
+        # routers/fleet.py's cost-report, which is what actually gets billed.
+        fleet_id = db.new_id()
+        c.execute("INSERT INTO fleets (id, company_name, created_at) VALUES (?, ?, ?)", (fleet_id, "Zenith Logistics", now))
+
+        fleet_manager_id = db.new_id()
+        fm_hash, fm_salt = hash_password(FLEET_MANAGER_PASSWORD)
+        c.execute(
+            """INSERT INTO users (id, name, email, password_hash, password_salt, role, fleet_id, created_at)
+               VALUES (?, ?, ?, ?, ?, 'fleet_manager', ?, ?)""",
+            (fleet_manager_id, "Zenith Fleet Manager", FLEET_MANAGER_EMAIL, fm_hash, fm_salt, fleet_id, now),
+        )
+
+        fleet_driver_id = db.new_id()
+        fd_hash, fd_salt = hash_password(FLEET_DRIVER_PASSWORD)
+        c.execute(
+            """INSERT INTO users (id, name, email, password_hash, password_salt, role, fleet_id, created_at)
+               VALUES (?, ?, ?, ?, ?, 'fleet_driver', ?, ?)""",
+            (fleet_driver_id, "Zenith Fleet Driver", FLEET_DRIVER_EMAIL, fd_hash, fd_salt, fleet_id, now),
+        )
+
+        fleet_vehicle_id = db.new_id()
+        c.execute(
+            """INSERT INTO vehicles (id, fleet_id, make, model, connector_type, battery_capacity_kwh, created_at)
+               VALUES (?, ?, 'Tata', 'Nexon EV', 'CCS2', 40.5, ?)""",
+            (fleet_vehicle_id, fleet_id, now),
+        )
+        c.execute(
+            "INSERT INTO fleet_vehicles (fleet_id, vehicle_id, charge_cap_pct) VALUES (?, ?, 90)",
+            (fleet_id, fleet_vehicle_id),
+        )
+        c.execute(
+            "INSERT INTO fleet_drivers (fleet_id, user_id, vehicle_id) VALUES (?, ?, ?)",
+            (fleet_id, fleet_driver_id, fleet_vehicle_id),
+        )
+
     print(f"Seed complete. Driver login: {DEMO_EMAIL} / {DEMO_PASSWORD}")
     print(f"Voltway operator login: {OPERATOR_EMAIL} / {OPERATOR_PASSWORD}")
     print(f"Beacon operator login: {OPERATOR2_EMAIL} / {OPERATOR2_PASSWORD}")
     print(f"Platform super_admin login: {SUPER_ADMIN_EMAIL} / {SUPER_ADMIN_PASSWORD}")
+    print(f"Zenith fleet manager login: {FLEET_MANAGER_EMAIL} / {FLEET_MANAGER_PASSWORD}")
+    print(f"Zenith fleet driver login: {FLEET_DRIVER_EMAIL} / {FLEET_DRIVER_PASSWORD}")
 
 
 if __name__ == "__main__":

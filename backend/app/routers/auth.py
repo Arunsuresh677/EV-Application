@@ -32,6 +32,13 @@ class RegisterOperatorRequest(BaseModel):
     password: str
 
 
+class RegisterFleetRequest(BaseModel):
+    company_name: str
+    manager_name: str
+    email: EmailStr
+    password: str
+
+
 def _public_user(user: dict) -> dict:
     return {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}
 
@@ -86,6 +93,36 @@ def register_operator(body: RegisterOperatorRequest):
     return {"token": token, "user": _public_user(user)}
 
 
+@router.post("/auth/register-fleet", status_code=201)
+def register_fleet(body: RegisterFleetRequest):
+    """Self-service fleet signup — creates a new fleet (company) and its
+    first fleet_manager user in one step. Mirrors register-operator: a
+    company that owns EV vehicles can onboard itself with no seed data."""
+    conn = db.get_conn()
+    if conn.execute("SELECT 1 FROM users WHERE email=?", (body.email,)).fetchone():
+        raise HTTPException(status_code=409, detail="Email already registered")
+    if not body.company_name.strip():
+        raise HTTPException(status_code=422, detail="Company name is required")
+
+    pw_hash, salt = auth.hash_password(body.password)
+    fleet_id = db.new_id()
+    manager_id = db.new_id()
+    now = db.now_iso()
+    with db.transaction() as c:
+        c.execute(
+            "INSERT INTO fleets (id, company_name, created_at) VALUES (?, ?, ?)",
+            (fleet_id, body.company_name.strip(), now),
+        )
+        c.execute(
+            """INSERT INTO users (id, name, email, password_hash, password_salt, role, fleet_id, created_at)
+               VALUES (?, ?, ?, ?, ?, 'fleet_manager', ?, ?)""",
+            (manager_id, body.manager_name, body.email, pw_hash, salt, fleet_id, now),
+        )
+    user = db.row_to_dict(conn.execute("SELECT * FROM users WHERE id=?", (manager_id,)).fetchone())
+    token = auth.issue_token(manager_id, "fleet_manager")
+    return {"token": token, "user": _public_user(user)}
+
+
 @router.post("/auth/login")
 def login(body: LoginRequest):
     # Keyed by email, not IP: this is what actually stops credential
@@ -116,12 +153,27 @@ class VehicleRequest(BaseModel):
 @router.get("/users/me/vehicles")
 def get_my_vehicles(user: dict = Depends(auth.get_current_user)):
     conn = db.get_conn()
-    return db.rows_to_list(
+    own = db.rows_to_list(
         conn.execute(
             "SELECT id, make, model, connector_type, battery_capacity_kwh FROM vehicles WHERE user_id=?",
             (user["id"],),
         ).fetchall()
     )
+    # A fleet_driver's vehicle isn't theirs (vehicles.user_id) — it's the
+    # fleet's, assigned to them via fleet_drivers.vehicle_id ("assigned
+    # vehicle only" per the PRD's fleet_driver scope). Include it here so
+    # the existing driver app just works for fleet drivers with no changes.
+    if user["fleet_id"]:
+        assigned = db.rows_to_list(
+            conn.execute(
+                """SELECT v.id, v.make, v.model, v.connector_type, v.battery_capacity_kwh
+                   FROM vehicles v JOIN fleet_drivers fd ON fd.vehicle_id = v.id
+                   WHERE fd.fleet_id = ? AND fd.user_id = ? AND fd.vehicle_id IS NOT NULL""",
+                (user["fleet_id"], user["id"]),
+            ).fetchall()
+        )
+        own += assigned
+    return own
 
 
 @router.post("/users/me/vehicles", status_code=201)

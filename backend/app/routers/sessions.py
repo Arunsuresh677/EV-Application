@@ -60,7 +60,17 @@ def start_session(
     if connector["status"] != "available":
         raise HTTPException(status_code=409, detail=f"Connector no longer available (status={connector['status']})")
 
+    # A fleet driver's vehicle isn't theirs by vehicles.user_id — it's the
+    # fleet's, assigned via fleet_drivers.vehicle_id (mirrors the same check
+    # in routers/auth.py's get_my_vehicles).
     vehicle = db.row_to_dict(conn.execute("SELECT * FROM vehicles WHERE id=? AND user_id=?", (body.vehicle_id, user["id"])).fetchone())
+    if vehicle is None and user["fleet_id"]:
+        vehicle = db.row_to_dict(
+            conn.execute(
+                "SELECT v.* FROM vehicles v JOIN fleet_drivers fd ON fd.vehicle_id = v.id WHERE fd.fleet_id=? AND fd.user_id=? AND v.id=?",
+                (user["fleet_id"], user["id"], body.vehicle_id),
+            ).fetchone()
+        )
     if vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
 

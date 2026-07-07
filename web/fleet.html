@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoltPath Fleet Manager</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath <span style="color:var(--muted); font-size:13px; font-weight:600;">Fleet</span></div>
+
+    <form id="login-form">
+      <div class="field"><label>Email</label><input type="email" id="login-email" value="fleet-manager@demo.dev" required></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" value="fleet12345" required></div>
+      <p class="auth-error" id="login-error"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log in</button>
+    </form>
+
+    <form id="register-form" class="hidden">
+      <div class="field"><label>Company name</label><input type="text" id="register-company" required></div>
+      <div class="field"><label>Your name</label><input type="text" id="register-name" required></div>
+      <div class="field"><label>Email</label><input type="email" id="register-email" required></div>
+      <div class="field"><label>Password</label><input type="password" id="register-password" required minlength="6"></div>
+      <p class="auth-error" id="register-error"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Register your fleet</button>
+    </form>
+
+    <div class="auth-switch">
+      <span id="switch-to-register">Own a fleet of EVs? <a>Register your company</a></span>
+      <span id="switch-to-login" class="hidden">Already registered? <a>Log in</a></span>
+    </div>
+
+    <p style="color:var(--muted); font-size:12px; margin-top:14px; text-align:center;">
+      Fleet managers only. Individual drivers use the <a href="/" style="color:var(--lime);">driver app</a>;
+      charging networks use the <a href="/operator" style="color:var(--lime);">operator dashboard</a>.
+    </p>
+  </div>
+</div>
+
+<!-- ============ FLEET APP ============ -->
+<div class="admin-app hidden" id="admin-app">
+  <div class="admin-sidebar">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath</div>
+    <div class="admin-nav-item on" data-view="roster"><span class="label-text">Roster</span></div>
+    <div class="admin-nav-item" data-view="vehicles"><span class="label-text">Vehicles</span></div>
+    <div class="admin-nav-item" data-view="cost-report"><span class="label-text">Cost report</span></div>
+    <div style="flex:1;"></div>
+    <div class="admin-nav-item" id="logout-btn"><span class="label-text">Log out</span></div>
+  </div>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <div class="eyebrow">Fleet manager</div>
+        <h1 class="title" id="admin-page-title">Roster</h1>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: ROSTER ============ -->
+    <div class="admin-view active" id="admin-view-roster">
+      <div class="form-row">
+        <div class="field"><label>Driver name</label><input id="new-driver-name" placeholder="e.g. Priya Nair"></div>
+        <div class="field"><label>Email</label><input id="new-driver-email" placeholder="priya@company.com"></div>
+        <div class="field"><label>Password</label><input id="new-driver-password" type="password" placeholder="Temporary password"></div>
+        <button class="btn btn-primary" id="add-driver-btn">Add driver</button>
+      </div>
+      <div id="roster-list"></div>
+    </div>
+
+    <!-- ============ VIEW: VEHICLES ============ -->
+    <div class="admin-view" id="admin-view-vehicles">
+      <div class="form-row">
+        <div class="field"><label>Make</label><input id="new-vehicle-make" placeholder="Tata"></div>
+        <div class="field"><label>Model</label><input id="new-vehicle-model" placeholder="Nexon EV"></div>
+        <div class="field">
+          <label>Connector</label>
+          <select id="new-vehicle-connector"><option>CCS2</option><option>CHAdeMO</option><option>TYPE2</option><option>NACS</option></select>
+        </div>
+        <div class="field"><label>Battery (kWh)</label><input id="new-vehicle-battery" type="number" placeholder="40.5" style="width:100px;"></div>
+        <button class="btn btn-primary" id="add-vehicle-btn">Add vehicle</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Vehicle</th><th>Connector</th><th>Battery</th><th>Charge cap</th></tr></thead>
+        <tbody id="vehicles-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- ============ VIEW: COST REPORT ============ -->
+    <div class="admin-view" id="admin-view-cost-report">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+        <button class="btn btn-ghost" id="export-csv-btn">Export CSV</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Driver</th><th>Email</th><th>Sessions</th><th>Energy</th><th style="text-align:right;">Cost</th></tr></thead>
+        <tbody id="cost-report-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/static/fleet.js"></script>
+</body>
+</html>
