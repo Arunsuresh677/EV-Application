@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoltPath Platform Admin</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath <span style="color:var(--muted); font-size:13px; font-weight:600;">Platform Admin</span></div>
+
+    <form id="login-form">
+      <div class="field"><label>Email</label><input type="email" id="login-email" value="admin@voltpath.dev" required></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" value="platform123" required></div>
+      <p class="auth-error" id="login-error"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log in</button>
+    </form>
+
+    <p style="color:var(--muted); font-size:12px; margin-top:14px; text-align:center;">
+      VoltPath internal use only. Charging networks use the
+      <a href="/operator" style="color:var(--lime);">operator dashboard</a>;
+      drivers use the <a href="/" style="color:var(--lime);">driver app</a>.
+    </p>
+  </div>
+</div>
+
+<!-- ============ ADMIN APP ============ -->
+<div class="admin-app hidden" id="admin-app">
+  <div class="admin-sidebar">
+    <div class="brand"><span class="bolt">⚡</span>VoltPath</div>
+    <div class="admin-nav-item on" data-view="operators"><span class="label-text">Operators</span></div>
+    <div class="admin-nav-item" data-view="stats"><span class="label-text">Platform stats</span></div>
+    <div style="flex:1;"></div>
+    <div class="admin-nav-item" id="logout-btn"><span class="label-text">Log out</span></div>
+  </div>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <div class="eyebrow">Platform admin</div>
+        <h1 class="title" id="admin-page-title">Operators</h1>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: OPERATORS ============ -->
+    <div class="admin-view active" id="admin-view-operators">
+      <table class="data-table">
+        <thead><tr><th>Company</th><th>Status</th><th>Stations</th><th>Admins</th><th>Registered</th><th></th></tr></thead>
+        <tbody id="operators-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- ============ VIEW: PLATFORM STATS ============ -->
+    <div class="admin-view" id="admin-view-stats">
+      <div class="stat-row" id="platform-stats"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/admin.js"></script>
+</body>
+</html>

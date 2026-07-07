@@ -20,6 +20,8 @@ OPERATOR_EMAIL = "operator@demo.dev"
 OPERATOR_PASSWORD = "operate123"
 OPERATOR2_EMAIL = "beacon-admin@demo.dev"
 OPERATOR2_PASSWORD = "operate123"
+SUPER_ADMIN_EMAIL = "admin@voltpath.dev"
+SUPER_ADMIN_PASSWORD = "platform123"
 
 
 def _seed_operator(c, now: str, company_name: str, admin_email: str, admin_password: str, admin_name: str, stations: list[dict], tariff_rate: float) -> str:
@@ -167,6 +169,16 @@ def run() -> None:
             (user_id, "Demo Driver", DEMO_EMAIL, pw_hash, salt, "+1-555-0100", now),
         )
 
+        # Platform super_admin — deliberately no operator_id, since this
+        # role sees across every operator (routers/admin.py), not one.
+        super_admin_id = db.new_id()
+        sa_pw_hash, sa_salt = hash_password(SUPER_ADMIN_PASSWORD)
+        c.execute(
+            """INSERT INTO users (id, name, email, password_hash, password_salt, role, created_at)
+               VALUES (?, ?, ?, ?, ?, 'super_admin', ?)""",
+            (super_admin_id, "Platform Admin", SUPER_ADMIN_EMAIL, sa_pw_hash, sa_salt, now),
+        )
+
         vehicle_id = db.new_id()
         c.execute(
             """INSERT INTO vehicles (id, user_id, make, model, connector_type, battery_capacity_kwh, created_at)
@@ -184,6 +196,7 @@ def run() -> None:
     print(f"Seed complete. Driver login: {DEMO_EMAIL} / {DEMO_PASSWORD}")
     print(f"Voltway operator login: {OPERATOR_EMAIL} / {OPERATOR_PASSWORD}")
     print(f"Beacon operator login: {OPERATOR2_EMAIL} / {OPERATOR2_PASSWORD}")
+    print(f"Platform super_admin login: {SUPER_ADMIN_EMAIL} / {SUPER_ADMIN_PASSWORD}")
 
 
 if __name__ == "__main__":

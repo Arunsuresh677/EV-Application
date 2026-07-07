@@ -100,6 +100,15 @@ def get_current_user(authorization: str = Header(default="")) -> dict:
     user = db.row_to_dict(conn.execute("SELECT * FROM users WHERE id = ?", (claims["uid"],)).fetchone())
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+
+    # Checked on every request, not just at login — a super_admin suspending
+    # an operator (routers/admin.py) needs to take effect immediately, not
+    # just block the next fresh login while an existing 7-day token still works.
+    if user["operator_id"]:
+        operator = db.row_to_dict(conn.execute("SELECT status FROM operators WHERE id=?", (user["operator_id"],)).fetchone())
+        if operator and operator["status"] == "suspended":
+            raise HTTPException(status_code=403, detail="This operator account has been suspended")
+
     return user
 
 
