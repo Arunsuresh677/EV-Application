@@ -5,6 +5,7 @@ import math
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from .. import auth, db
+from ..services import reservations as reservations_service
 
 router = APIRouter(tags=["stations"])
 
@@ -40,6 +41,7 @@ def search_stations(
     user: dict = Depends(auth.get_current_user),
 ):
     conn = db.get_conn()
+    reservations_service.expire_stale_reservations(conn)
     stations = db.rows_to_list(conn.execute("SELECT * FROM stations").fetchall())
     results = []
 
@@ -88,6 +90,7 @@ def search_stations(
 @router.get("/stations/{station_id}")
 def get_station(station_id: str, user: dict = Depends(auth.get_current_user)):
     conn = db.get_conn()
+    reservations_service.expire_stale_reservations(conn)
     station = db.row_to_dict(conn.execute("SELECT * FROM stations WHERE id=?", (station_id,)).fetchone())
     if station is None:
         raise HTTPException(status_code=404, detail="Station not found")

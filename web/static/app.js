@@ -162,7 +162,7 @@ function goTo(name) {
 
   if (name === 'map') loadStations();   // re-fetch so occupied/available reflects any session started elsewhere
   if (name === 'history') loadHistory();
-  if (name === 'account') { loadWallet(); loadVehicleList(); loadPaymentMethodList(); }
+  if (name === 'account') { loadWallet(); loadVehicleList(); loadPaymentMethodList(); loadReservationList(); }
 }
 document.querySelectorAll('[data-nav]').forEach(el => {
   el.addEventListener('click', () => goTo(el.dataset.nav));
@@ -354,6 +354,7 @@ function renderStationSheet() {
 
   const selectedConnector = d.connectors.find(c => c.id === state.selectedConnectorId);
   const canStart = selectedConnector && selectedConnector.status === 'available' && state.vehicles.length > 0;
+  const canReserve = selectedConnector && selectedConnector.status === 'available';
 
   content.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -377,6 +378,7 @@ function renderStationSheet() {
       <button class="btn btn-primary" id="start-charging-btn" ${canStart ? '' : 'disabled'}>
         ${state.vehicles.length === 0 ? 'No vehicle on file' : 'Start charging'}
       </button>
+      <button class="btn btn-ghost" id="reserve-btn" ${canReserve ? '' : 'disabled'}>Reserve for 30 min</button>
       <button class="btn btn-ghost" id="report-issue-btn">🚩 Report an issue with this connector</button>
     </div>
   `;
@@ -386,7 +388,19 @@ function renderStationSheet() {
   });
   const startBtn = document.getElementById('start-charging-btn');
   if (startBtn) startBtn.addEventListener('click', () => startSession(state.selectedConnectorId));
+  const reserveBtn = document.getElementById('reserve-btn');
+  if (reserveBtn) reserveBtn.addEventListener('click', () => reserveConnector(state.selectedConnectorId));
   document.getElementById('report-issue-btn').addEventListener('click', () => openReportModal(state.selectedConnectorId));
+}
+
+async function reserveConnector(connectorId) {
+  try {
+    await api('/reservations', { method: 'POST', body: { connector_id: connectorId, hold_minutes: 30 } });
+    toast('Reserved for 30 minutes.', 'success');
+    if (state.selectedStationId) selectStation(state.selectedStationId);
+  } catch (err) {
+    toast('Could not reserve: ' + err.message, 'error');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -723,6 +737,67 @@ document.getElementById('add-card-btn').addEventListener('click', async () => {
     toast('Could not add card: ' + err.message, 'error');
   }
 });
+
+// ---------------------------------------------------------------------------
+// Reservations (Account view)
+// ---------------------------------------------------------------------------
+async function loadReservationList() {
+  let reservations;
+  try {
+    reservations = await api('/users/me/reservations');
+  } catch (err) {
+    toast('Could not load reservations: ' + err.message, 'error');
+    return;
+  }
+  const el = document.getElementById('reservation-list');
+  const active = reservations.filter(r => r.status === 'active');
+  if (!active.length) {
+    el.innerHTML = '<div class="empty-state">No active reservations.</div>';
+    return;
+  }
+  el.innerHTML = active.map(r => `
+    <div class="wallet-entry">
+      <div><div class="reason">Held until ${formatDate(r.expiry_time)}</div><div class="when">Connector ${r.connector_id.slice(0, 8)}</div></div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-primary" style="padding:6px 14px; font-size:12px;" data-start-from-reservation="${r.id}" data-reservation-connector="${r.connector_id}">Start charging</button>
+        <button class="btn btn-ghost" style="padding:6px 14px; font-size:12px;" data-cancel-reservation="${r.id}">Cancel</button>
+      </div>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('[data-cancel-reservation]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await api(`/reservations/${btn.dataset.cancelReservation}/cancel`, { method: 'POST' });
+        toast('Reservation cancelled.', 'success');
+        loadReservationList();
+      } catch (err) {
+        toast('Could not cancel: ' + err.message, 'error');
+      }
+    });
+  });
+  el.querySelectorAll('[data-start-from-reservation]').forEach(btn => {
+    btn.addEventListener('click', () => startSessionFromReservation(btn.dataset.startFromReservation, btn.dataset.reservationConnector));
+  });
+}
+
+async function startSessionFromReservation(reservationId, connectorId) {
+  if (!state.vehicles.length) { toast('Add a vehicle first, in this same Account tab.', 'error'); return; }
+  const vehicleId = state.vehicles[0].id;
+  try {
+    const session = await api('/sessions', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': uuidv4() },
+      body: { connector_id: connectorId, vehicle_id: vehicleId, reservation_id: reservationId },
+    });
+    state.session = session;
+    goTo('charging');
+    renderChargingView();
+    connectSessionSocket(session.id);
+  } catch (err) {
+    toast('Could not start session: ' + err.message, 'error');
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Plug Watch report modal

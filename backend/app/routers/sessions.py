@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from .. import auth, db
 from ..services import ocpp_sim, rate_limit
+from ..services import reservations as reservations_service
 
 router = APIRouter(tags=["sessions"])
 
@@ -54,10 +55,26 @@ def start_session(
     # should get slowed down, not silently allowed at full speed.
     rate_limit.check(f"session-start:{user['id']}", max_requests=10, window_seconds=60)
 
+    reservations_service.expire_stale_reservations(conn)
+
+    # A connector held by the caller's own active reservation is fine to
+    # start on even though its status reads 'reserved', not 'available' —
+    # that's the whole point of reserving ahead of time.
+    reservation = None
+    if body.reservation_id:
+        reservation = db.row_to_dict(
+            conn.execute(
+                "SELECT * FROM reservations WHERE id=? AND user_id=? AND status='active'", (body.reservation_id, user["id"])
+            ).fetchone()
+        )
+        if reservation is None or reservation["connector_id"] != body.connector_id:
+            raise HTTPException(status_code=404, detail="Reservation not found or doesn't match this connector")
+
     connector = db.row_to_dict(conn.execute("SELECT * FROM connectors WHERE id=?", (body.connector_id,)).fetchone())
     if connector is None:
         raise HTTPException(status_code=404, detail="Connector not found")
-    if connector["status"] != "available":
+    connector_usable = connector["status"] == "available" or (reservation is not None and connector["status"] == "reserved")
+    if not connector_usable:
         raise HTTPException(status_code=409, detail=f"Connector no longer available (status={connector['status']})")
 
     # A fleet driver's vehicle isn't theirs by vehicles.user_id — it's the
@@ -82,6 +99,8 @@ def start_session(
                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
             (session_id, user["id"], body.connector_id, body.vehicle_id, body.reservation_id, idempotency_key, connector["guaranteed"], db.now_iso()),
         )
+        if reservation is not None:
+            c.execute("UPDATE reservations SET status='fulfilled' WHERE id=?", (reservation["id"],))
 
     session = db.row_to_dict(conn.execute("SELECT * FROM sessions WHERE id=?", (session_id,)).fetchone())
     ocpp_sim.launch_session(session_id, body.connector_id)

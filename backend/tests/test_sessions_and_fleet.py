@@ -10,29 +10,13 @@ import time
 
 from app import db
 
-from .conftest import auth_headers, register_driver, unique_email
-
-
-def _first_available_connector(client, token):
-    stations = client.get(
-        "/v1/stations/search", params={"lat": 11.0168, "lng": 76.9558, "radius_km": 50}, headers=auth_headers(token)
-    ).json()
-    for station in stations:
-        detail = client.get(f"/v1/stations/{station['id']}", headers=auth_headers(token)).json()
-        for connector in detail["connectors"]:
-            if connector["status"] == "available":
-                return connector["id"]
-    raise AssertionError("No available connector found in seeded demo data")
-
-
-def _add_vehicle(client, token) -> str:
-    res = client.post(
-        "/v1/users/me/vehicles",
-        json={"make": "Test", "model": "EV", "connector_type": "CCS2", "battery_capacity_kwh": 50},
-        headers=auth_headers(token),
-    )
-    assert res.status_code == 201, res.text
-    return res.json()["id"]
+from .conftest import (
+    add_vehicle as _add_vehicle,
+    auth_headers,
+    fresh_connector,
+    register_driver,
+    unique_email,
+)
 
 
 class TestIdempotentSessionStart:
@@ -40,7 +24,7 @@ class TestIdempotentSessionStart:
         driver = register_driver(client)
         token = driver["token"]
         vehicle_id = _add_vehicle(client, token)
-        connector_id = _first_available_connector(client, token)
+        connector_id = fresh_connector(client)
 
         body = {"connector_id": connector_id, "vehicle_id": vehicle_id}
         key = unique_email("idem-key")  # any unique string works as the key
@@ -56,7 +40,7 @@ class TestIdempotentSessionStart:
         driver = register_driver(client)
         token = driver["token"]
         vehicle_id = _add_vehicle(client, token)
-        connector_id = _first_available_connector(client, token)
+        connector_id = fresh_connector(client)
 
         first = client.post(
             "/v1/sessions",
@@ -81,7 +65,7 @@ class TestVehicleOwnership:
         vehicle_id = _add_vehicle(client, owner_token)
 
         other_token = register_driver(client)["token"]
-        connector_id = _first_available_connector(client, other_token)
+        connector_id = fresh_connector(client)
 
         res = client.post(
             "/v1/sessions",
@@ -106,7 +90,7 @@ class TestFleetDriverSessions:
         token = res.json()["token"]
         vehicles = client.get("/v1/users/me/vehicles", headers=auth_headers(token)).json()
         fleet_vehicle_id = next(v["id"] for v in vehicles if v["make"] == "Tata")
-        connector_id = _first_available_connector(client, token)
+        connector_id = fresh_connector(client)
 
         res = client.post(
             "/v1/sessions",

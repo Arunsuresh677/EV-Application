@@ -53,3 +53,38 @@ def register_driver(client, name="Test Driver", email=None, password="testpass12
 
 def auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+def fresh_connector(client) -> str:  # noqa: ARG001 — `client` just ensures the DB is initialized
+    """A brand-new operator/station/connector, isolated from both the seeded
+    demo data and every other test. Tests that reserve/occupy a connector
+    and don't release it would otherwise exhaust the small shared pool of
+    seeded connectors and starve later tests — this sidesteps that."""
+    conn = db.get_conn()
+    now = db.now_iso()
+    operator_id = db.new_id()
+    station_id = db.new_id()
+    connector_id = db.new_id()
+    with db.transaction() as c:
+        c.execute("INSERT INTO operators (id, company_name, status, created_at) VALUES (?, 'Test Co', 'active', ?)", (operator_id, now))
+        c.execute(
+            "INSERT INTO stations (id, operator_id, name, address, lat, lng, status, ocpp_charge_point_id, created_at) "
+            "VALUES (?, ?, 'Test Station', '1 Test St', 11.0168, 76.9558, 'online', ?, ?)",
+            (station_id, operator_id, f"CP-{station_id[:8]}", now),
+        )
+        c.execute(
+            "INSERT INTO connectors (id, station_id, ocpp_connector_id, type, power_kw, status, reliability_score, guaranteed, updated_at) "
+            "VALUES (?, ?, 1, 'CCS2', 50, 'available', 95, 1, ?)",
+            (connector_id, station_id, now),
+        )
+    return connector_id
+
+
+def add_vehicle(client, token) -> str:
+    res = client.post(
+        "/v1/users/me/vehicles",
+        json={"make": "Test", "model": "EV", "connector_type": "CCS2", "battery_capacity_kwh": 50},
+        headers=auth_headers(token),
+    )
+    assert res.status_code == 201, res.text
+    return res.json()["id"]

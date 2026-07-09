@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from . import db
 from .logging_config import get_logger
 from .routers import admin, auth as auth_router
-from .routers import fleet, operator, payments, sessions, stations, trust
+from .routers import fleet, operator, payments, reservations, sessions, stations, trust
 from .seed import run as seed_run
 from .services import ocpp_sim
 
@@ -54,6 +54,7 @@ app.include_router(payments.router, prefix="/v1")
 app.include_router(operator.router, prefix="/v1")
 app.include_router(admin.router, prefix="/v1")
 app.include_router(fleet.router, prefix="/v1")
+app.include_router(reservations.router, prefix="/v1")
 
 if WEB_DIR.exists():
     app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
