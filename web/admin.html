@@ -36,6 +36,7 @@
     <div class="brand"><span class="bolt">⚡</span>VoltPath</div>
     <div class="admin-nav-item on" data-view="operators"><span class="label-text">Operators</span></div>
     <div class="admin-nav-item" data-view="stats"><span class="label-text">Platform stats</span></div>
+    <div class="admin-nav-item" data-view="billing"><span class="label-text">Billing</span></div>
     <div style="flex:1;"></div>
     <div class="admin-nav-item" id="logout-btn"><span class="label-text">Log out</span></div>
   </div>
@@ -59,6 +60,15 @@
     <!-- ============ VIEW: PLATFORM STATS ============ -->
     <div class="admin-view" id="admin-view-stats">
       <div class="stat-row" id="platform-stats"></div>
+    </div>
+
+    <!-- ============ VIEW: BILLING ============ -->
+    <div class="admin-view" id="admin-view-billing">
+      <div class="stat-row" id="billing-mrr"></div>
+      <table class="data-table">
+        <thead><tr><th>Company</th><th>Plan</th><th>Subscription</th><th>This period</th><th>Invoice status</th></tr></thead>
+        <tbody id="billing-table-body"></tbody>
+      </table>
     </div>
   </div>
 </div>

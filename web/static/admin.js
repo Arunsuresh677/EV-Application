@@ -97,7 +97,7 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Navigation
 // ---------------------------------------------------------------------------
-const VIEW_TITLES = { operators: 'Operators', stats: 'Platform stats' };
+const VIEW_TITLES = { operators: 'Operators', stats: 'Platform stats', billing: 'Billing' };
 
 function goToView(name) {
   document.querySelectorAll('.admin-view').forEach(v => v.classList.remove('active'));
@@ -107,6 +107,7 @@ function goToView(name) {
 
   if (name === 'operators') loadOperators();
   if (name === 'stats') loadStats();
+  if (name === 'billing') loadBilling();
 }
 document.querySelectorAll('.admin-nav-item[data-view]').forEach(el => {
   el.addEventListener('click', () => goToView(el.dataset.view));
@@ -179,6 +180,39 @@ async function loadStats() {
     <div class="card"><div class="v">₹${stats.revenue_total.toFixed(2)}</div><div class="l">Revenue (all-time)</div></div>
     <div class="card"><div class="v">${stats.open_tickets}</div><div class="l">Open tickets</div></div>
   `;
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+async function loadBilling() {
+  let data;
+  try {
+    data = await api('/admin/billing');
+  } catch (err) {
+    toast('Could not load billing: ' + err.message, 'error');
+    return;
+  }
+
+  document.getElementById('billing-mrr').innerHTML = `
+    <div class="card"><div class="v">₹${data.mrr.toFixed(2)}</div><div class="l">MRR (plan fees)</div></div>
+    <div class="card"><div class="v">${data.operators.length}</div><div class="l">Billed operators</div></div>
+  `;
+
+  const tbody = document.getElementById('billing-table-body');
+  if (!data.operators.length) {
+    tbody.innerHTML = '<tr><td colspan="5">No operators yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.operators.map(op => `
+    <tr>
+      <td>${op.company_name}</td>
+      <td>${op.plan_name}</td>
+      <td><span class="pill"><span class="dot ${op.subscription_status === 'active' ? 'live' : 'dead'}"></span>${op.subscription_status}</span></td>
+      <td>₹${op.current_invoice_total.toFixed(2)}</td>
+      <td><span class="ticket-status ${op.current_invoice_status === 'paid' ? 'resolved' : (op.current_invoice_status === 'overdue' ? 'open' : 'in_progress')}">${op.current_invoice_status}</span></td>
+    </tr>
+  `).join('');
 }
 
 // ---------------------------------------------------------------------------

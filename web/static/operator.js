@@ -10,6 +10,7 @@ const state = {
   user: null,
   stations: [],
   tickets: [],
+  billingPlans: [],
 };
 
 async function api(path, { method = 'GET', body, headers = {} } = {}) {
@@ -131,7 +132,7 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Navigation
 // ---------------------------------------------------------------------------
-const VIEW_TITLES = { stations: 'Stations', pricing: 'Pricing', analytics: 'Analytics', tickets: 'Maintenance tickets' };
+const VIEW_TITLES = { stations: 'Stations', pricing: 'Pricing', analytics: 'Analytics', tickets: 'Maintenance tickets', billing: 'Billing' };
 
 function goToView(name) {
   document.querySelectorAll('.admin-view').forEach(v => v.classList.remove('active'));
@@ -143,6 +144,7 @@ function goToView(name) {
   if (name === 'pricing') loadStations();
   if (name === 'analytics') loadStationsForAnalytics();
   if (name === 'tickets') loadTickets();
+  if (name === 'billing') loadBilling();
 }
 document.querySelectorAll('.admin-nav-item[data-view]').forEach(el => {
   el.addEventListener('click', () => goToView(el.dataset.view));
@@ -387,6 +389,94 @@ async function updateTicket(ticketId, status) {
     toast('Could not update ticket: ' + err.message, 'error');
   }
 }
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+async function loadBilling() {
+  let overview, invoices, plans;
+  try {
+    [overview, invoices, plans] = await Promise.all([
+      api('/operator/billing'),
+      api('/operator/billing/invoices'),
+      api('/billing/plans'),
+    ]);
+  } catch (err) {
+    toast('Could not load billing: ' + err.message, 'error');
+    return;
+  }
+  state.billingPlans = plans;
+  renderBillingOverview(overview);
+  renderInvoices(invoices);
+}
+
+function renderBillingOverview(overview) {
+  document.getElementById('billing-stats').innerHTML = `
+    <div class="card"><div class="v">${overview.plan.name}</div><div class="l">Current plan</div></div>
+    <div class="card"><div class="v">${overview.subscription_status}</div><div class="l">Subscription status</div></div>
+    <div class="card"><div class="v">₹${overview.current_invoice.total.toFixed(2)}</div><div class="l">This month's invoice</div></div>
+  `;
+
+  const stationLimit = overview.plan.max_stations === null
+    ? 'Unlimited stations'
+    : `${overview.station_count} / ${overview.plan.max_stations} stations`;
+  document.getElementById('billing-plan-info').innerHTML = `
+    <div style="font-weight:700; font-size:16px;">${overview.plan.name} — ₹${overview.plan.monthly_fee.toFixed(2)}/mo + ${(overview.plan.platform_fee_percent * 100).toFixed(1)}% of session revenue</div>
+    <div style="color:var(--muted); font-size:13px; margin-top:4px;">${stationLimit}</div>
+  `;
+
+  const select = document.getElementById('plan-select');
+  select.innerHTML = state.billingPlans.map(p => `<option value="${p.id}" ${p.id === overview.plan.id ? 'selected' : ''}>${p.name} — ₹${p.monthly_fee}/mo</option>`).join('');
+}
+
+function renderInvoices(invoices) {
+  const container = document.getElementById('invoices-list');
+  if (!invoices.length) {
+    container.innerHTML = '<div class="empty-state">No invoices yet.</div>';
+    return;
+  }
+  container.innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>Period</th><th>Base fee</th><th>Usage fee</th><th>Total</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${invoices.map(inv => `
+          <tr>
+            <td>${new Date(inv.period_start).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</td>
+            <td>₹${inv.base_fee.toFixed(2)}</td>
+            <td>₹${inv.usage_fee.toFixed(2)}</td>
+            <td>₹${inv.total.toFixed(2)}</td>
+            <td><span class="ticket-status ${inv.status === 'paid' ? 'resolved' : (inv.status === 'overdue' ? 'open' : 'in_progress')}">${inv.status}</span></td>
+            <td>${inv.status !== 'paid' ? `<button class="btn btn-ghost" style="padding:6px 14px; font-size:12px;" data-pay-invoice="${inv.id}">Pay</button>` : ''}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  container.querySelectorAll('[data-pay-invoice]').forEach(btn => {
+    btn.addEventListener('click', () => payInvoice(btn.dataset.payInvoice));
+  });
+}
+
+async function payInvoice(invoiceId) {
+  try {
+    await api(`/operator/billing/invoices/${invoiceId}/pay`, { method: 'POST' });
+    toast('Invoice paid.', 'success');
+    loadBilling();
+  } catch (err) {
+    toast('Could not pay invoice: ' + err.message, 'error');
+  }
+}
+
+document.getElementById('change-plan-btn').addEventListener('click', async () => {
+  const plan_id = document.getElementById('plan-select').value;
+  try {
+    await api('/operator/billing/plan', { method: 'POST', body: { plan_id } });
+    toast('Plan updated.', 'success');
+    loadBilling();
+  } catch (err) {
+    toast('Could not change plan: ' + err.message, 'error');
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Boot

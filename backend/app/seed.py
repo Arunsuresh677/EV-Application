@@ -83,7 +83,7 @@ def run() -> None:
     now = db.now_iso()
 
     with db.transaction() as c:
-        _seed_operator(
+        voltway_id = _seed_operator(
             c, now,
             company_name="Voltway Networks",
             admin_email=OPERATOR_EMAIL,
@@ -145,7 +145,7 @@ def run() -> None:
         # A second, unrelated operator — exists purely to prove the
         # operator dashboard's tenant isolation: this station_admin must
         # never see Voltway's stations, and vice versa.
-        _seed_operator(
+        beacon_id = _seed_operator(
             c, now,
             company_name="Beacon EV Networks",
             admin_email=OPERATOR2_EMAIL,
@@ -195,6 +195,32 @@ def run() -> None:
             """INSERT INTO payment_methods (id, user_id, psp_token, brand, last4, is_default, created_at)
                VALUES (?, ?, 'tok_demo_mock', 'visa', '4242', 1, ?)""",
             (payment_method_id, user_id, now),
+        )
+
+        # Operator billing: Voltway gets the mid-tier plan (demo variety —
+        # Beacon stays on the Starter default every new operator gets),
+        # plus one completed session + captured payment dated this month so
+        # the billing dashboards have real usage-fee revenue to show instead
+        # of an empty ₹0 invoice.
+        c.execute(
+            "INSERT INTO operator_subscriptions (operator_id, plan_id, status, created_at, updated_at) VALUES (?, 'growth', 'active', ?, ?)",
+            (voltway_id, now, now),
+        )
+        demo_connector = c.execute(
+            "SELECT co.id FROM connectors co JOIN stations st ON co.station_id = st.id "
+            "WHERE st.operator_id = ? ORDER BY co.power_kw DESC LIMIT 1",
+            (voltway_id,),
+        ).fetchone()
+        demo_session_id = db.new_id()
+        c.execute(
+            """INSERT INTO sessions (id, user_id, connector_id, vehicle_id, idempotency_key, status, start_time, end_time, energy_kwh, cost, created_at)
+               VALUES (?, ?, ?, ?, ?, 'completed', ?, ?, 42.5, 630.00, ?)""",
+            (demo_session_id, user_id, demo_connector["id"], vehicle_id, db.new_id(), now, now, now),
+        )
+        c.execute(
+            """INSERT INTO payments (id, session_id, payment_method_id, amount, status, psp_reference, created_at)
+               VALUES (?, ?, ?, 630.00, 'captured', 'pi_demo_mock', ?)""",
+            (db.new_id(), demo_session_id, payment_method_id, now),
         )
 
         # Demo fleet: a company that owns EV vehicles and employs drivers —

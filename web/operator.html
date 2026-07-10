@@ -50,6 +50,7 @@
     <div class="admin-nav-item" data-view="pricing"><span class="label-text">Pricing</span></div>
     <div class="admin-nav-item" data-view="analytics"><span class="label-text">Analytics</span></div>
     <div class="admin-nav-item" data-view="tickets"><span class="label-text">Tickets <span class="count" id="ticket-count"></span></span></div>
+    <div class="admin-nav-item" data-view="billing"><span class="label-text">Billing</span></div>
     <div style="flex:1;"></div>
     <div class="admin-nav-item" id="logout-btn"><span class="label-text">Log out</span></div>
   </div>
@@ -111,6 +112,26 @@
     <!-- ============ VIEW: TICKETS ============ -->
     <div class="admin-view" id="admin-view-tickets">
       <div id="tickets-list"></div>
+    </div>
+
+    <!-- ============ VIEW: BILLING ============ -->
+    <div class="admin-view" id="admin-view-billing">
+      <div class="stat-row" id="billing-stats"></div>
+      <div class="card">
+        <div class="eyebrow">Your plan</div>
+        <div id="billing-plan-info"></div>
+        <div class="form-row" style="margin-top:14px; margin-bottom:0;">
+          <div class="field">
+            <label>Change plan</label>
+            <select id="plan-select"></select>
+          </div>
+          <button class="btn btn-ghost" id="change-plan-btn">Switch plan</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="eyebrow">Invoices</div>
+        <div id="invoices-list"></div>
+      </div>
     </div>
   </div>
 </div>

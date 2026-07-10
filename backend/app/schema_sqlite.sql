@@ -231,3 +231,52 @@ CREATE TABLE IF NOT EXISTS user_credits (
     created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_credits_user ON user_credits(user_id);
+
+-- ---------------------------------------------------------------------------
+-- Operator billing — the SaaS fee VoltPath charges the charging networks
+-- that use the platform. Distinct from `payments` (a driver paying for a
+-- charging session) and `tariffs` (an operator pricing their own sessions).
+-- No PostgreSQL counterpart in docs/schema.sql yet.
+-- ---------------------------------------------------------------------------
+
+-- Static plan catalog, seeded here (not in seed.py) since it's platform
+-- config rather than demo data — every environment, including tests, should
+-- have the same three plans available.
+CREATE TABLE IF NOT EXISTS subscription_plans (
+    id                      TEXT PRIMARY KEY,
+    name                    TEXT NOT NULL,
+    monthly_fee             REAL NOT NULL,
+    max_stations            INTEGER,     -- NULL = unlimited
+    platform_fee_percent    REAL NOT NULL,
+    sort_order              INTEGER NOT NULL
+);
+INSERT OR IGNORE INTO subscription_plans (id, name, monthly_fee, max_stations, platform_fee_percent, sort_order) VALUES
+    ('starter', 'Starter', 0, 2, 0.03, 1),
+    ('growth', 'Growth', 4999, 10, 0.015, 2),
+    ('enterprise', 'Enterprise', 19999, NULL, 0.005, 3);
+
+CREATE TABLE IF NOT EXISTS operator_subscriptions (
+    operator_id     TEXT PRIMARY KEY REFERENCES operators(id),
+    plan_id         TEXT NOT NULL REFERENCES subscription_plans(id),
+    status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','past_due','cancelled')),
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+
+-- One row per operator per calendar-month billing period. Created lazily
+-- (services/billing.py) the first time that period's billing data is read,
+-- not on a schedule — same reasoning as reservation expiry.
+CREATE TABLE IF NOT EXISTS invoices (
+    id              TEXT PRIMARY KEY,
+    operator_id     TEXT NOT NULL REFERENCES operators(id),
+    period_start    TEXT NOT NULL,
+    period_end      TEXT NOT NULL,
+    base_fee        REAL NOT NULL,
+    usage_fee       REAL NOT NULL,
+    total           REAL NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','overdue')),
+    created_at      TEXT NOT NULL,
+    paid_at         TEXT,
+    UNIQUE(operator_id, period_start)
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_operator ON invoices(operator_id, period_start DESC);
